@@ -1,0 +1,197 @@
+Notes for changes:
+
+Continue to have a defined order
+
+Make clear that order is prescribed for writers and loose for readers.
+
+Required fields
+
+Optional fields
+
+Proper use of undefined fields.
+
+Order of fields -- defined order for mandatory fields, then all other fields in alphabetical order
+
+====================
+
+Tonel File Formats Specification
+
+Tonel is a set of formats for storing and sharing Smalltalk code in disk directories and files. 
+
+Three formats are specified:
+1) File-per-method
+2) File-per-class
+3) File-per-package
+These three formats are semantically identical, therefore it is possible to convert anything represented in one of the formats to any of the other formats with no information loss.
+
+Goals of Tonel include
+* Interchange between Smalltalk implementations
+* Management of Smalltalk code in Git (or Subversion, etc.)
+* Ability to edit Smalltalk code in plain-text editors, as well as within a Smalltalk IDE
+* Meaningful use of third-party diffing tools for Smalltalk code
+
+Declarative 
+Traditional Smalltalk fileins are imperative -- they execute code as the file is parsed.
+Tonel is declarative. In a typical implementation, Tonel files are parsed into a graph of definition objects (class definition, method definition, etc.) and these definition objects are then analyzed and either applied to the system or delivered to tools that can manipulate the definitions directly.
+
+A Tonel format is used to store a package definition. A package definition is a set of class definitions and class extension definitions, and other information about the package.
+
+Tonel is not concerned with code organization at granularities larger than a package. How multiple packages might be stored and relate to each other is beyond the scope of the current Tonel specification.
+Similarly, although the Tonel formats fully describe the units that make up a package, Tonel does not specify what any of those units would look like outside the context of the entire package.
+
+This document specifies what must be done by WRITERS of the Tonel formats, and what must be recognized by READERS of the Tonel formats. Where not otherwise specified herein, the rule is that Tonel writers must strictly follow the format, and Tonel readers should be permissive (where possible) of slight deviations from the precise format.
+
+=============
+
+The File-per-package Format
+
+The file-per-package stores all information about a package in a single file. 
+
+Name of the file:
+It is ENCOURAGED (but not required) that Tonel writers write the file with the name <nameOfPackage>.st, with some possible minimal mangling of the package name to avoid character set limitations, filename uniqueness requirements, and the like.
+Tonel readers MUST NOT assign any significance to the name of the file. For example, the name of the package is that name defined inside the file, regardless of the filename.
+
+The syntax of the Tonel file-per-package format is given in the SYNTAX section below under the start symbol FilePerPackageFile.
+
+=============
+
+The File-per-class Format
+
+The file-per-class format represents a package as a directory of files. 
+
+Name of the package directory:
+It is ENCOURAGED that Tonel writers name the package directory <nameOfPackage>.
+Tonel readers MUST NOT assign any significance to the name of the package directory.
+
+Files within the package directory:
+
+.properties
+The file named ".properties" contains information about what is in the directory. In a package directory, the .properties file contains the properties of the package. For syntax, see beow under the start symbol PackagePropertiesFile.
+
+The .properties file is the only file in a package directory whose file name is significant. Each of the other files in the package directory 
+
+
+=============
+
+The File-per-method format
+
+=============
+
+SYNTAX:
+
+Encoding Shall be UTF-8
+
+This syntax is described in PEG syntax, see peg-popl04.pdf
+
+*** Need to think about extension methods.
+
+----------
+
+ClassFile <- Spacing FileSectionHeader UnknownSection* ClassDefinition UnknownSection* EndOfFile
+
+FileSectionHeader <- SECTIONMARK 'File' Spacing SectionProperties
+
+ClassDefinition <- ClassSectionHeader UnknownSection* ClassMethodsSection? UnknownSection* InstanceMethodSection?
+
+ClassSectionHeader <- SECTIONMARK 'Class' Spacing SectionProperties
+
+ClassMethodsSection <- ClassMethodsSectionHeader UnknownSection* MethodSections
+
+ClassMethodsSectionHeader <- SECTIONMARK 'ClassMethods' Spacing SectionProperties
+
+InstanceMethodsSection <- InstanceMethodsSectionHeader UnknownSection* MethodSections
+
+InstanceMethodsSectionHeader <- SECTIONMARK 'InstanceMethods' Spacing SectionProperties
+
+MethodSections <- (MethodSection? UnknownSection?)*
+
+MethodSection <- MethodSectionHeader SmalltalkMethodBody
+
+UnknownSection <- !(FileSectionHeader / ClassSectionHeader / ClassMethodsSection / InstanceMethodsSection / MethodSection) SECTIONMARK ((!SECTIONMARK !.) .)*
+
+MethodSectionHeader <- SECTIONMARK 'Method' Spacing SectionProperties
+
+SmalltalkMethodBody <- (MethodCode / SmalltalkComment)* 
+   #Should be valid to a Smalltalk compiler
+
+MethodCode <- (SmalltalkStringLiteral / OtherMethodCode )* 
+
+OtherMethodCode <- (!(SECTIONMARK / "'" / '"') . )*
+
+SmalltalkComment <- '"' ( !'"' . )* '"'
+
+SmalltalkStringLiteral <- "'" ("''" / (!"'" . ))* "'"
+
+SectionProperties <- LimitedStonMap?
+
+Spacing <- WhitespaceCharacter*
+
+WhitespaceCharacter <- ' ' / '\t' / '\r' / '\n'
+
+EndOfFile <- !.
+
+SECTIONMARK <- '-:'
+
+---
+
+STON subset for section properties:
+
+LimitedStonMap <- '{' Spacing LimitedStonMember* '}' Spacing
+
+LimitedStonMember <- LimitedStonPair (comma LimitedStonPair)*
+
+LimitedStonPair <- (StonString / StonSymbol / StonNumber) colon LimitedStonValue
+
+
+StonString <- "'" StonStringChar* "'"
+
+StonStringChar <- !['"\] . / StonEscapedChar
+
+StonEscapedChar <- '\' ['"\/bfnrt] / StonUnicodeChar
+
+StonUnicodeChar <- '\u' hexdigit hexdigit hexdigit hexdigit
+
+
+StonSymbol <- '#' StonUnquotedSymbolChar* / "#'" StonStringChar+ "'"
+
+StonUnquotedSymbolChar <- [-a-zA-Z0-9_./]
+
+
+StonNumber <- StonInt / StonFloat
+
+StonInt <- '-'? ('0' / [1-9] [0-9]*)
+
+StonFloat <- StonInt (StonFractionalPart / StonExponent / StonFractionalPart StonExponent)
+
+StonFractionalPart <- '.' [0-9]+ 
+
+StonExponent <- [Ee] [-+]? [0-9]+
+
+
+LimitedStonValue <- StonPrimitiveValue / LimitedStonObject 
+
+StonPrimitiveValue <- 'nil' / 'true' / 'false' / StonNumber / StonSymbol / StonString
+
+LimitedStonObject <- LimitedStonMap / LimitedStonList
+
+LimitedStonList <- '[' LimitedStonValue* ']'
+
+
+hexdigit <- [0-9] ([a-f] / [A-F])
+
+comma <- ',' Spacing
+colon <- ':' Spacing
+
+=========
+
+Each level of section has an optional properties definition in JSON.
+
+=========
+
+File-per-method Cypress
+
+Directory structure 
+Directories have uppercase names, files lower-case
+
+RepositoryDirectory (any name)
+properties.ston
