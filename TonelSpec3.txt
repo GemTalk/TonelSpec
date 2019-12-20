@@ -165,7 +165,7 @@ Syntax of Tonel STON
 This syntax is presented in PEG format (see https://en.wikipedia.org/wiki/Parsing_expression_grammar and 
 https://pdos.csail.mit.edu/~baford/packrat/popl04/peg-popl04.pdf). Its structure mimics the structure of that in the STON specification, so that it is easy to compare with that specification to see the differences.
 
-All productions with a name starting with "Ws" should be considered equivalent to "Whitespace" by Tonel Readers, but Tonel Writers should use the specific definition. For example, if "WsNlTab" is defined as a single platform-dependent new line sequence (LF or CRLF) followed by a tab character. At a point in the grammar where this production appears, Tonel Writers must write exactly these two (or, on Windows, three) characters, but Tonel Readers must accept any sequence of whitespace characters.
+All productions with a name starting with "Ws" should be considered equivalent to "Whitespace" by Tonel Readers, but Tonel Writers should use the specific definition. For example, if "WsNlTab" is defined as a single platform-dependent new line sequence (LF or CRLF) followed by a tab character. At a point in the grammar where this production appears, Tonel Writers must write exactly these two (or, on Windows, three) bytes, but Tonel Readers must accept any sequence of whitespace characters.
 
 TonelFileObject <- 'TonelFile' WsBlank Map
 
@@ -190,7 +190,13 @@ NotLastAssociationLine <- WsTab Association ',' WsNl
 
 LastAssociationLine <- WsTab Association WsNl
 
-**** Need to include Array syntax here, since arrays are valid values for things like #instVars.
+**** Need to include List syntax here, since arrays are valid values for things like #instVars.
+
+List <- '[' WsNl ListElements ']' WsNl
+
+ListElements <- (ListElement WsNl) | (ListElement ',' WsNl ListElements)
+
+ListElement <- WsTabTab string 
 
 Association <- SimpleSymbol WsBlank ':' WsBlank String
 
@@ -220,9 +226,11 @@ SimpleSymbolChar <- [A-Z] / [a-z] / DecimalDigit / '-' / '_' / '.' / '/'
 
 WsBlank <- '\40'  #Space character. PEG does escapes in octal.
 
-WsNl <- '\12' / '\15\12'   #Tonel Writers should always use the alternative for the local platform.
+WsNl <- '\12' / '\15\12'   #Tonel Writers should always use the alternative native to the local platform.
 
 WsTab <- '\11'
+
+WsTabTab <- WsTab WsTab
 
 Whitespace <- ('\40' / '\11' / '\12' / '\15')+ #Tonel Readers must accept all these characters as whitespace. Readers MAY also accept other non-printing Unicode codepoints (such as non-breaking space) as whitespace. Tonel writers must never output arbitrary whitespace between syntactic elements, but follow the Ws* productions.
 
