@@ -86,9 +86,11 @@ There are a small number of exceptions to this simple rule, detailed below.
 
 <end non-normative section>
 
-==============
+==================================================================================
 
-Things in common between the formats:
+Things in common between the formats
+
+==================================================================================
 
 Filenames
 ---------
@@ -165,13 +167,15 @@ Syntax of Tonel STON
 This syntax is presented in PEG format (see https://en.wikipedia.org/wiki/Parsing_expression_grammar and 
 https://pdos.csail.mit.edu/~baford/packrat/popl04/peg-popl04.pdf). Its structure mimics the structure of that in the STON specification, so that it is easy to compare with that specification to see the differences.
 
-All productions with a name starting with "Ws" should be considered equivalent to "Whitespace" by Tonel Readers, but Tonel Writers should use the specific definition. For example, if "WsNlTab" is defined as a single platform-dependent new line sequence (LF or CRLF) followed by a tab character. At a point in the grammar where this production appears, Tonel Writers must write exactly these two (or, on Windows, three) bytes, but Tonel Readers must accept any sequence of whitespace characters.
+All productions with a name starting with "Ws" should be considered equivalent to "Whitespace" by Tonel Readers, but Tonel Writers should use the specific definition. For example, "WsTabTab" is defined as a  sequence of two tab characters. At a point in the grammar where this production appears, Tonel Writers must write exactly these two bytes, but Tonel Readers must accept any sequence of whitespace characters.
 
 TonelFileObject <- 'TonelFile' WsBlank Map
 
 PackagePropertiesObject <- 'Package' WsBlank Map
 
 TonelClassObject <- 'Class' WsBlank Map
+
+TonelClassExtensionObject <- 'Extension' WsBlank Map
 
 TonelMethodDescriptor <- Map
 
@@ -180,7 +184,7 @@ Map <- SingleEntryMap / MultipleEntryMap
 SingleEntryMap <- '{' WsBlank Association WsBlank '}' WsNl
 
 *** It would simplify the syntax to use the MultipleEntryMap format even when there is only one key-value pair, but this
-*** is not currently done in Pharo, where method properties are all on one line, and limited to #category.
+*** is not done in Pharo 7, where method properties are all on one line, and limited to #category.
 
 MultipleEntryMap <- '{' WsNl AssociationLines '}' WsNl
 
@@ -190,15 +194,13 @@ NotLastAssociationLine <- WsTab Association ',' WsNl
 
 LastAssociationLine <- WsTab Association WsNl
 
-**** Need to include List syntax here, since arrays are valid values for things like #instVars.
-
 List <- '[' WsNl ListElements ']' WsNl
 
 ListElements <- (ListElement WsNl) | (ListElement ',' WsNl ListElements)
 
 ListElement <- WsTabTab string 
 
-Association <- SimpleSymbol WsBlank ':' WsBlank String
+Association <- SimpleSymbol WsBlank ':' WsBlank (String | List)
 
 String <- "'" StringChars "'"
 
@@ -306,21 +308,40 @@ Classes are defined in Tonel STON with the syntax of TonelClassObject.
 
 Mandatory keys are:
 
-#name
-#superclass
+#name : String class name
+#superclass : String class name
 
 *** Should there be any other mandatory keys in a class definition? Which ones?
 
 The value associated with the key #name is the name of the class being defined.
 
-The value associated with the kay #superclass is the name of the superclass of the class being defined, or the string 'nil'. Note that the standard STON value nil is not accepted.
+The value associated with the key #superclass is the name of the superclass of the class being defined, or the string 'nil'. Note that the standard STON value nil is not accepted.
 
 Defined optional keys are:
 
-#category
-#instVars
+#category : String category name
+#instVars : List of string instance variable names, in order of definition.
+
+*** Any other defined optional keys?
 
 
+
+===================
+
+Class extensions
+----------------
+
+Classes are extended (given additional methods) in Tonel STON with the syntax of TonelClassExtensionObject.
+
+Mandatory keys are:
+
+#name : String class name
+
+The value associated with the key #name is the name of the class being extended.
+
+======================================================================================
+
+THE FORMATS
 
 ======================================================================================
 
@@ -368,13 +389,13 @@ Class Definition Directory
 
 A class definition directory's canonical name is the name of the class being defined, followed by '.class'. For example, the class Object would be defined by a directory whose canonical name is 'Object.class'.
 
-A class definition directory contains a properties.st file and two subdirectories, whose canonical names and filesystem names are 'instance' and 'class'.
+A class definition directory contains a properties.st file and two subdirectories, whose canonical names and filesystem names are 'instance' and 'class'. Tonel Readers must ignore, and Tonel Writers must not modify, any other files or subdirectories of a class definition directory.
 
 The properties.st file of a class definition directory contains a TonelFile header, a class comment, and a class definition. The syntax of this file is:
 
-ClassDefinitionPropertiesFile <- FileHeader WsNl WsNl Comment TonelClassObject
+ClassDefinitionPropertiesFile <- TonelFileObject WsNl Comment TonelClassObject
 
-Note that the comment is mandatory, though it can be empty.
+Note that the comment is mandatory, though it may be empty.
 
 
 Class Extension Directory
@@ -382,16 +403,59 @@ Class Extension Directory
 
 A class extension directory's canonical name is the name of the class being defined, followed by '.extension'. For example, the class Object would be extended by a directory whose canonical name is 'Object.extension'.
 
-
 The canonical name of a class extension directory is <className>.extension
 
---
+A class extension directory contains a properties.st file and two subdirectories, whose canonical names and filesystem names are 'instance' and 'class'. Tonel Readers must ignore, and Tonel Writers must not modify, any other files or subdirectories of a class definition directory.
 
-A class directory contains a properties.st file and two subdirectories with the canonical name and filesystem names of 'class' and 'instance'.
+The grammar of the properties.st file in a class extension directory is:
 
-The grammar of the properties.st file in a class definition directory is:
+ClassExtensionPropertiesFile <- TonelFileObject WsNl TonelClassExtensionObject
 
-ClassDefinitionPropertiesFile <- TonelFileObject WsNl 
+In this file's TonelFileObject, the value associated with #contentType must be 'classExtensionDirectory'.
+
+
+Instance and class directories
+------------------------------
+
+An instance directory defines any methods for a class. A class directory defines any methods for its associated metaclass.
+
+Tonel writers must write the subdirectories 'class' and 'instance' under each class definition directory or class extension directory, and put a valid properties.st file in each directory, even if that directory defines no methods. Tonel readers must treat a missing 'class' or 'instance' directory as a valid directory that defines no methods.
+
+The properties.st file in each instance or class directory has the syntax TonelFileObject. 
+
+In an instance directory's properties.st file, the #contentType must be 'instanceSideMethodsDirectory'.
+
+In a class directory's properties.st file, the #contentType must be 'classSideMethodsDirectory'.
+
+In addition to the properties.st file, an instance or class directory contains method files, one per method being defined.
+
+
+Method files
+------------
+
+The canonical name of a method file is <methodSelector>.st.
+
+*** Do we want to specify the mapping from canonical name to filesystem name for characters such as colon? Do we want to use the same convention as FileTree did for this?
+
+The contents of a method file have the syntax:
+
+TonelMethodFile <- TonelFileObject WsNl TonelMethodDescriptor SmalltalkMethod
+
+Mandatory keys in a TonelMethodDescriptor are:
+
+*** What are the mandatory and defined optional keys of a TonelMethodDescriptor? Pharo 7 just uses #category. It's not clear to me that this should be mandatory, though it should probably be a defined optional key.
+
+Defined optional keys are:
+
+#category : String category name
+#source : String method source
+
+When the key #source is used to provide the source code for a method, the SmalltalkMethod must be empty. This alternate way of providing method source code should only be used when the source contains syntax that is far enough from standard Smalltalk that it cannot be accurately represented in SmalltalkMethod syntax.
+
+==========================================================================================
+
+
+
 
 
 
