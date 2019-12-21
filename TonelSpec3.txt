@@ -454,7 +454,58 @@ When the key #source is used to provide the source code for a method, the Smallt
 
 ==========================================================================================
 
+The file-per-class format
+=========================
 
+Directory structure
+-------------------
+
+The directory for a package contains a file named "properties.st" and a file for each class class defined or extended in the package.
+
+Package directory
+  properties.st
+  Class1.class
+  Class2.extension
+  ...
+  ClassN.class
+  
+
+Package Directory
+-----------------
+
+A package directory's canonical name is the name of the package.
+
+A package directory contains a properties.st file and a file for each class defined or extended by the package.
+
+The properties.st file of a package directory in file-per-class format is the same as the properties.st file of a package directory in file-per-method format.
+
+
+Class files
+-----------
+
+A class file represents either the definition of a class and its methods within a package, or a class extension. A class extension is intended to add methods to a class that is defined in some other package.
+
+Tonel Readers must report an error if a class is defined more than once in the same package, or is extended more than once in the same package, or is both defined and extended in the same package.
+
+
+Class definition file
+---------------------
+
+A class definition file's canonical name is the name of the class being defined, followed by '.class.st'. For example, the class Object would be defined by a file whose canonical name is 'Object.class.st'.
+
+The syntax of a class definition file is:
+
+ClassDefinitionFile <- Comment TonelClassObject (TonelMethodDescriptor SmalltalkMethod)*
+
+The Comment is the comment of the class. Note that the comment is mandatory, though it may be empty.
+
+The mandatory and optional keys of the TonelClassObject and any TonelMethodDescriptors are the same as in the file-per-method format.
+
+Any methods must be ordered. Class methods come first, followed by instance methods. Within each of these two categories, methods must be sorted by selector, in code point sort order.
+
+*** Need to have double WsNl between methods.
+
+*** A bit of syntactic untangling would be nice.
 
 
 
