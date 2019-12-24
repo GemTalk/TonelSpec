@@ -208,17 +208,10 @@ StringChars <- (StringChar / StringEscape)*
 
 StringChar <- !"'" !'\\' .   #Any Unicode character except ' and \
 
-StringEscape <- FundamentalStringEscape / NamedStringEscape / OptionalStringEscape . UnicodeStringEscape  #StringEscapes are the same as in regular STON
-
-FundamentalStringEscape <- '\\\\' / "\\'"
-
-NamedStringEscape <- "\\b / '\\f' / '\\n' / '\\r' / '\\t'
-
-OptionalStringEscape <- '\\/' / '\\"'
-
-UnicodeStringEscape <- '\\u" HexDigit HexDigit HexDigit HexDigit
-
-HexDigit <- DecimalDigit / [A-F] / [a-f]
+StringEscape <- '\\\\' / "\\'"    
+(Since all Tonel files are UTF-8, the only necessary string escapes are those for backslash and single quote.
+To avoid ambiguity in the representation of strings, Tonel Writers must not use any other STON string escapes.
+Tonel Readers may accept other STON string escapes.)
 
 DecimalDigit <- [0-9]
 
@@ -268,7 +261,9 @@ Comment <- '"' ((!'"' .) / '""')* '"' WsNl WsNl
 Smalltalk method source
 -----------------------
 
-Smalltalk method source must appear in Tonel files where specified below, and only where specified below. Tonel Readers must recognize enough Smalltalk syntax to be able to reliably detect the boundaries of the method. Tonel readers are discouraged from syntactic or semantic analysis of method source beyond the syntax in this section.
+Tonel has two ways of representing method source: as a Tonel STON value associated with the key #source, and as source code enclosed in square brackets using the syntax SmalltalkMethod.
+
+Smalltalk method source in square brackets must appear in Tonel files where specified below, and only where specified below. Tonel Readers must recognize enough Smalltalk syntax to be able to reliably detect the boundaries of the method. Tonel Readers are discouraged from syntactic or semantic analysis of method source beyond the syntax in this section.
 
 SmalltalkMethod <- MethodIdentification WsBlank '[' WsNl SmalltalkCode WsNl ']' WsNl
 
@@ -278,7 +273,7 @@ ClassIdentifier <- ClassName (WsBlank 'class')?
 
 ClassName <- (!Whitespace .)+
 
-MethodPattern <- (!'[' .)+
+MethodPattern <- (!(WsBlank '[') .)+
 
 SmalltalkCode <- (SmalltalkStringLiteral / SmalltalkComment / SmalltalkCharacterLiteral / SmalltalkBlock / OtherSmalltalkCode)*
 
@@ -291,6 +286,26 @@ SmalltalkCharacterLiteral <- '$' .
 SmalltalkBlock <- '[' SmalltalkCode ']'
 
 OtherSmalltalkCode <- (!('"' / "'" / '$' / '[') .)*
+
+The full source code of a method described using this syntax is the concatenation of the MethodPattern, a newline, and the SmmalltalkCode from the SmalltalkMethod production.
+
+All methods that can syntactically be represented as SmalltalkMethod must be so represented by Tonel Writers. ANSI Smalltalk, and most code in most Smalltalk dialects, can be represented in SmalltalkMethod syntax. 
+
+Some current Smalltalk dialects allow embedding of code from other languages into method source. To allow for this, and for similar capabilities of possible future Smalltalk dialects, the alternative of representing method source as a Tonel STON value is provided. 
+
+For example, if some dialect were to allow embedding of C code into method source, a C comment such as "/* ] */" would be likely to be erroneously recognized by the SmalltalkMethod syntax to be the end of the method, since that syntax does not understand that the right bracket is in a comment.
+
+Method source that cannot be syntactically represented by the above SmalltalkMethod grammar must be represented in the Tonel STON for that method. The keys used for this are #selector and #source. The value corresponding to the key #selector is a Tonel STON string (not a symbol) giving the selector. For example, one legal Tonel STON association for a selector is:
+
+#selector : 'at:put:'
+
+The value corresponding to the key #source is a Tonel STON string containing the full source code of the method, *including* the method pattern. For example:
+
+#source : 'at: index put: value
+    "This is a comment on an unnecessary method."
+    ^ super at: index put: value
+'
+
 
 *** Dale points out that putting the class name in each MethodIdentification is redundant, and that would be simpler to omit it. 
 *** He has had to rename classes by editing Tonel files in a text editor, and this is *much* simpler if the 
