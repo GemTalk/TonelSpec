@@ -295,7 +295,11 @@ Some current Smalltalk dialects allow embedding of code from other languages int
 
 For example, if some dialect were to allow embedding of C code into method source, a C comment such as "/* ] */" would be likely to be erroneously recognized by the SmalltalkMethod syntax to be the end of the method, since that syntax does not understand that the right bracket is in a comment.
 
-Method source that cannot be syntactically represented by the above SmalltalkMethod grammar must be represented in the Tonel STON for that method. The keys used for this are #selector and #source. The value corresponding to the key #selector is a Tonel STON string (not a symbol) giving the selector. For example, one legal Tonel STON association for a selector is:
+Method source that cannot be syntactically represented by the above SmalltalkMethod grammar must be represented in the Tonel STON for that method. The keys used for this are #isMeta, #selector, and #source. 
+
+The value corresponding to the key #isMeta must be the Tonel STON string 'false' or the string 'true'.
+
+The value corresponding to the key #selector is a Tonel STON string (not a symbol) giving the selector. For example, one legal Tonel STON association for a selector is:
 
 #selector : 'at:put:'
 
@@ -305,6 +309,10 @@ The value corresponding to the key #source is a Tonel STON string containing the
     "This is a comment on an unnecessary method."
     ^ super at: index put: value
 '
+
+When a Tonel Writer writes a method's source in SmalltalkMethod syntax, the Tonel STON describing that method must not contain any of the keys #isMeta, #selector, or #source. 
+
+When a Tonel Writer writes a method's source using Tonel STON, all of the keys #isMeta, #selector, and #source must be in the TonelMethodDescriptor, and a SmalltalkMethod must not follow the TonelMethodDescriptor. Since these keys are not mandatory, they must appear in code point sort order after the mandatory keys.
 
 
 *** Dale points out that putting the class name in each MethodIdentification is redundant, and that would be simpler to omit it. 
@@ -454,7 +462,7 @@ The canonical name of a method file is <methodSelector>.st.
 
 The contents of a method file have the syntax:
 
-TonelMethodFile <- TonelFileObject WsNl TonelMethodDescriptor SmalltalkMethod
+TonelMethodFile <- TonelFileObject WsNl TonelMethodDescriptor SmalltalkMethod?
 
 Mandatory keys in a TonelMethodDescriptor are:
 
