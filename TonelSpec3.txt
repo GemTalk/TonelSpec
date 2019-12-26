@@ -133,7 +133,7 @@ The information within Tonel consists of these parts:
 Ordering
 --------
 
-To avoid spurious Git-level changes, all implementations must write Tonel files in a well-defined order. For Tonel STON, each section has mandatory keys and optional keys (specified below). The mandatory keys must all be present, must appear before the optional keys, and must appear in the order specified below. The optional keys, if any, must appear after the mandatory keys. Optional keys must appear sorted in Unicode code point order. This sorting avoids differences based on the locale in which the Tonel Writer is operating.
+To avoid spurious Git-level changes, all implementations must write Tonel files in a well-defined order. For Tonel STON, each section has mandatory keys and optional keys (specified below). The mandatory keys must all be present, must appear before the optional keys, and must appear in the order specified below. The optional keys, if any, must appear after the mandatory keys. Optional keys must appear sorted in order of increasing Unicode code point. This sorting avoids differences based on the locale in which the Tonel Writer is operating.
 
 Optional Keys
 -------------
@@ -393,7 +393,10 @@ A package directory contains a properties.st file and a directory for each class
 
 The properties.st file of a package directory contains a TonelFile header, an optional package comment, followed by a package definition. The syntax of this file is:
 
-PackagePropertiesFile <- FileHeader WsNl WsNl Comment? PackagePropertiesObject
+PackagePropertiesFile <- FileHeader WsNl Comment? PackagePropertiesObject
+
+*** Here, the comment is optional, elsewhere a comment is mandatory but may be empty. This should be made consistent.
+*** The syntax is a bit simpler if it's mandatory, I think?
 
 The only mandatory key of a PackagePropertiesObject is #name. The associated value is both the name of the package and the canonical name of the directory in which the properties.st file appears.
 
@@ -462,7 +465,9 @@ The canonical name of a method file is <methodSelector>.st.
 
 The contents of a method file have the syntax:
 
-TonelMethodFile <- TonelFileObject WsNl TonelMethodDescriptor SmalltalkMethod?
+TonelMethodFile <- TonelFileObject WsNl DescribedSmalltalkMethod
+
+DescribedSmalltalkMethod <- TonelMethodDescriptor SmalltalkMethod?
 
 Mandatory keys in a TonelMethodDescriptor are:
 
@@ -477,8 +482,10 @@ When the key #source is used to provide the source code for a method, the Smallt
 
 ==========================================================================================
 
+
 The file-per-class format
 =========================
+
 
 Directory structure
 -------------------
@@ -518,18 +525,69 @@ A class definition file's canonical name is the name of the class being defined,
 
 The syntax of a class definition file is:
 
-ClassDefinitionFile <- Comment TonelClassObject (TonelMethodDescriptor SmalltalkMethod)*
+ClassDefinitionFile <- TonelFileObject WsNl ClassDefinition
+
+ClassDefinition <- Comment? TonelClassObject (WsNl SmalltalkMethods)?
+
+SmalltalkMethods <- (DescribedSmalltalkMethod WsNl SmalltalkMethods) / DescribedSmalltalkMethod
 
 The Comment is the comment of the class. Note that the comment is mandatory, though it may be empty.
 
 The mandatory and optional keys of the TonelClassObject and any TonelMethodDescriptors are the same as in the file-per-method format.
 
-Any methods must be ordered. Class methods come first, followed by instance methods. Within each of these two categories, methods must be sorted by selector, in code point sort order.
+Note that it is permitted for a class definition to contain no methods. Any methods present must be ordered. Class methods come first, followed by instance methods. Within each of these two categories, methods must be sorted by selector, in code point sort order.
 
-*** Need to have double WsNl between methods.
 
-*** A bit of syntactic untangling would be nice.
+Class extension file
+--------------------
 
+A class extension file's canonical name is the name of the class being extended, followed by '.extension.st'. For example, the class Behavior would be extended by a file named 'Behavior.extension.st'.
+
+The syntax of a class extension file is:
+
+ClassExtensionFile <- TonelFileObject WsNl ClassExtension
+
+ClassExtension <- TonelClassExtensionObject WsNl SmalltalkMethods
+
+
+The mandatory and optional keys of the TonelClassExtensionObject and any TonelMethodDescriptors are the same as in the file-per-method format.
+
+Note that a class extension must contain at least one method. The methods must be ordered. Class methods come first, followed by instance methods. Within each of these two categories, methods must be sorted by selector, in code point sort order.
+
+
+==========================================================================================
+
+
+The file-per-package format
+===========================
+
+Directory structure
+-------------------
+
+There is no specified directory structure; each package is contained in its entirety in a single file.
+
+
+Package File
+------------
+
+A package file represents a package, including information about the package itself, the classes the package defines and extends, and all of the methods defined by the package.
+
+A package file's canonical name is the name of the package being defined, followed by '.package.st'. For instance, the canonical name of the file for the package Collections-Abstract would be 'Collections-Abstract.package.st'.
+
+The syntax of a package file is:
+
+PackageFile <- FileHeader WsNl Comment? PackagePropertiesObject WsNl PackageContents
+
+PackageContents <- (ClassDefinitions WsNl ClassExtensions) / ClassDefinitions / ClassExtensions
+
+ClassDefinitions <- (ClassDefinition WsNl ClassDefinitions) / ClassDefinition
+
+ClassExtensions <- (ClassExtension WsNl ClassExtensions) / ClassExtension
+
+
+The PackagePropertiesObject and its preceding comment are the same as in the properties.st file of a package directory in file-per-method or file-per-class format.
+
+Note that a package file must define or extend at least one class. Class definitions and extensions must be ordered. Any class definitions come before any class extensions. Within class definitions, and within class extensions, classes are ordered in code point order of class name.
 
 
 
