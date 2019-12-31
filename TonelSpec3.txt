@@ -1,8 +1,3 @@
-Notes for changes:
-
-
-Initialization? out of scope?
-
 =======================
 
 Tonel File and Directory Format Specification, version 1.0 draft 1
@@ -10,9 +5,9 @@ Martin McClure, principal author
 
 ====================
 
-About this draft (draft 1):
+About draft 1:
 
-This draft is an attempt to specify what was agreed upon between GemTalk (Martin McClure, Dale Henrichs) and Pharo (Esteban Lorenzano) in late 2017 and early 2018, which I refer to as Tonel v1.0. Pharo 6 and 7 use a somewhat earlier version of Tonel, for which no specification exists AFAIK. Tonel as practiced by Pharo 6 and 7 may be informally referred to as "Tonel v0". Issues of conversion and compatibility between Tonel v0 and Tonel v1.0 are certainly important, but this specification does not address them. They may or may not be addressed in future drafts, depending on feedback from the community of Tonel implementors.
+This draft is an attempt to specify what was agreed upon between GemTalk (Martin McClure, Dale Henrichs) and Pharo (Esteban Lorenzano) in 2017 and early 2018, which I refer to as Tonel v1.0. Pharo 6 and 7 use a somewhat earlier version of Tonel, for which no specification exists AFAIK. Tonel as practiced by Pharo 6 and 7 may be informally referred to as "Tonel v0". Issues of conversion and compatibility between Tonel v0 and Tonel v1.0 are certainly important, but this specification does not address them. They may or may not be addressed in future drafts, depending on feedback from the community of Tonel implementors.
 
 Existing Tonel 0 implementations will need some changes to move from Tonel 0 to Tonel 1.0. These changes are relatively minor. However, since there are *some* required changes, it gives us an opportunity to make more changes, if we as a community so desire. Personally, I am more interested in having a standard that covers our needs and is robust for moving into the future than I am in minimizing the changes from Tonel 0. I also like simplicity, and there are some minor ways to simplify the Tonel grammar by deviating slightly from the Tonel 1.0 agreed upon in 2017-2018.
 
@@ -31,7 +26,7 @@ Tonel is a set of formats for storing and sharing Smalltalk code in disk directo
 
 Goals of Tonel include
 * Interchange between Smalltalk implementations
-* Management of Smalltalk code in Git or another text-file-based code versioning system (for example, Subversion). Whenever the term "Git" is used in this standard, it should be understood to apply equally to any other versioning system.
+* Management of Smalltalk code in Git or another text-file-based code versioning system (for example, Subversion). Whenever the term "Git" is used in this standard, it should be understood to apply equally to any similar versioning system.
 * Ability to edit Smalltalk code in plain-text editors, as well as within a Smalltalk IDE
 * Meaningful use of third-party diffing tools for Smalltalk code
 
@@ -41,7 +36,7 @@ Tonel is declarative. In a typical implementation, Tonel files are parsed into a
 
 A Tonel format is used to store a package definition. A package definition is a set of class definitions and class extension definitions, and other information about the package.
 
-Tonel is not concerned with code organization at granularities larger than a package. How multiple packages might be stored and relate to each other is beyond the scope of the current Tonel specification. This specification may be expanded in the future to include the inter-package directory structure used by the Rowan package manager.
+Tonel is not concerned with code organization at granularities larger than a package. How multiple packages might be stored and relate to each other is beyond the scope of the current Tonel specification. This specification may be expanded in the future to include inter-package structures used by the Rowan package manager.
 
 Similarly, although the Tonel formats fully describe the units that make up a package, Tonel does not specify what any of those units would look like outside the context of the entire package.
 
@@ -92,88 +87,135 @@ Things in common between the formats
 
 ==================================================================================
 
-Filenames
----------
+The directory properties file
+-----------------------------
 
-Each Tonel file and each Tonel directory has both a canonical name and a filesystem name. The canonical name is the logical, ideal, name for the directory or file, as specified below. The filesystem name is the name actually found in the filesystem. Whenever possible, these two names should be identical. However, there are several reasons why this might not always be possible:
-* Platform restrictions on character set
-* Platform restrictionn on name length
+Each directory in the Tonel file-per-method and Tonel file-per-class formats contains a file with the filesystem name 'properties.st'. This file allows a Tonel Reader to determine what information is represented in the directory. The fact that this file has the same name in every directory makes it easy for a Tonel Reader to find.
+
+
+File and directory names
+------------------------
+
+Each Tonel file and each Tonel directory has both a canonical name and a filesystem name. The canonical name is the logical, ideal, name for the directory or file, as specified below. The canonical name of a Tonel file or directory can be arbitrarily long, and can contain any Unicode character.
+
+The filesystem name is the name actually found in the filesystem. Whenever possible, the canonical name and the filesystem name must be identical. However, there are several reasons why this might not always be possible:
+* Platform restrictions on filename character set
+* Platform restrictionn on filename length
 * Name collision due to canonical names that differ only by case in the same directory of a case-insensitive filesystem.
 * Name collision due to two canonical names of "properties.st" in the same directory.
-
-*** Should we change the suffix of properties files to avoid name collisions? Perhaps "properties.tonel"?
-
 * Possibly other reasons
+
 When the filesystem name cannot be made identical to the canonical filename, the filesystem name must be chosen by the Tonel Writer to be as close as is practical to the canonical name.
 
-*** We should probably standardize how the filesystem name is related to the canonical filename for known cases where they must be different.
+*** We should standardize how the filesystem name is related to the canonical filename for known cases where they must be different. What cases are known?
 
-The canonical name of a Tonel file is found in the header of the file itself. Every Tonel directory contains a file whose canonical name is "properties.st". The filesystem name must also be "properties.st" unless that is an illegal name in some future filesystem. In the case of a name collision, the other files' filesystem names must be the ones to change. The purpose of the properties.st file is to give information about the contents of the directory. The canonical name of the directory can be derived from the contents of this file, as detailed below.
+The canonical name of a Tonel file is found in the header of the file itself. The canonical name of a Tonel directory can be determined by the contents of that directory's properties.st file, as detailed below.
+
+The canonical name of the properties.st file is 'properties.st'. The filesystem name must also be 'properties.st'. The name 'properties.st' is valid in all currently known filesystems. If a class or method file has the canonical name 'properties.st', its filesystem name must not be 'properties.st' since that is reserved for the directory properties file.
+
+*** This is unnecessarily awkward. Should we change the suffix of properties files to avoid possible name collisions? Perhaps "properties.tonel"? If not, we need to specify what the filesystem names of a class or method file whose canonical name is 'properties.st' would be.
 
 The filesystem name of a Tonel file appears only in the filesystem, not within the files themselves. 
  
-When reading Tonel files and directories, Tonel Readers must treat each file or directory according to its canonical name, regardless of what its filesystem name is. Tonel Readers and Writers must examine the headers of each file in a directory to determine what Tonel content is actually present. They cannot rely on filenames.
+When reading Tonel files and directories, Tonel Readers must treat each file or directory according to its canonical name, regardless of what its filesystem name is. Tonel Readers and Tonel Writers must examine the headers of each file in a directory to determine what Tonel content is actually present. They cannot rely on filenames.
 
-Encoding
---------
 
-All Tonel files are encoded in UTF-8. Canonical names can contain any Unicode character.
+Character Set and Encoding
+--------------------------
 
-----
+All Tonel files are encoded in UTF-8. 
+Tonel files, and the canonical names of Tonel files and directories, can contain any Unicode character.
+
+
+Structure
+---------
 
 The information within Tonel consists of these parts:
 
 1) The directory structure itself conveys information. For instance, in file-per-class format, the information of which package defines a class is conveyed by the class file being inside a directory that belongs to the package.
 
 2) Within each file, information takes these forms:
-  a) Class comments, in double quotes.
+  a) Class or package comments, in double quotes.
   b) Smalltalk method source code, in square brackets.
   c) Tonel STON. The STON (Smalltalk Object Notation) permitted in a Tonel file is a subset of standard STON, though the semantics are slightly different. The syntax of standard STON can be found at https://github.com/svenvc/ston/blob/master/ston-spec.md. The syntax of Tonel STON is specified below, and will remain constant even if the syntax of standard STON changes. In this standard, "STON" refers to Tonel STON unless otherwise indicated.
+  
+
+Write Strictly, Read Permissively
+---------------------------------
+
+In order to use Git to determine the changes between two versions of the same package, it is vital that the only changes to the files and directories representing that package reflect actual semantic differences. Therefore, all Tonel Writers conforming to this specification must produce character-for-character identical output for semantically identical packages.
+
+However, one goal of Tonel is to be readable by humans, and to be edited by humans using plain text editors. To reduce the burden of correctness on human editors of Tonel files, Tonel Readers must allow variations that do not alter the semantic content.
+
+Two areas where this principle of "write strictly, read permissively" applies are ordering and whitespace.
 
 Ordering
 --------
+Tonel Writers must write the elements of all files in a strict order as specified below. Some sorting is specified below as "code point order." This means in order of increasing Unicode code point, leftmost character the most significant. Using code point order avoids file differences arising from collation differences in different locales.
 
-To avoid spurious Git-level changes, all implementations must write Tonel files in a well-defined order. For Tonel STON, each section has mandatory keys and optional keys (specified below). The mandatory keys must all be present, must appear before the optional keys, and must appear in the order specified below. The optional keys, if any, must appear after the mandatory keys. Optional keys must appear sorted in order of increasing Unicode code point. This sorting avoids differences based on the locale in which the Tonel Writer is operating.
+In cases where the order of elements is not semantically significant (for instance, keys in a dictionary or methods in a class) Tonel Readers must accept those elements in any order. This makes it easier for humans using normal text editors to edit Tonel files to create files that will be accepted by Tonel Readers.
+
+Whitespace
+----------
+Line ending conventions
+In all Tonel files, line ends must use the convention of the local operating system environment. This means CRLF for Windows, LF for Unix/Mac. It is recommended that users of Tonel configure their Git repositories to use LF line endings internally, and let Git handle the translation on the way in and out. A single LF (Unix) or CRLF sequence (Windows) is referred to below as a "newline."
+Tonel files can also contain multi-line Smalltalk string literals. Tonel Writers and Tonel Readers must use the local OS environment's line ending convention in these cases, converting if necessary from the internal line end used by the local Smalltalk implementation.
+
+Where whitespace is specified herein, Tonel writers must write the exact sequence and number of spaces, tabs, and newlines specified herein.
+Tonel readers shall allow any number and sequence of spaces, tabs, newlines, and optionally other whitespace characters (e.g. non-breaking space) wherever the syntax specifies "whitespace."
+
+
+==============
+
+Details
+=======
+
+Syntax
+------
+
+Syntax in this specification is presented in PEG format (see https://en.wikipedia.org/wiki/Parsing_expression_grammar and 
+https://pdos.csail.mit.edu/~baford/packrat/popl04/peg-popl04.pdf). 
+
+Tonel files contain information in three main syntaxes: Tonel STON, Comments, and Tonel Method Source. All three of these use a common whitespace syntax. Wherever a syntax references a production whose name starts with 'Ws', TonelWriters must write exactly these characters, but TonelReaders must accept the production 'Whitespace'. For example, "WsTabTab" is defined as a  sequence of two tab characters. At a point in the grammar where this production appears, Tonel Writers must write exactly these two bytes, but Tonel Readers must accept any sequence of whitespace characters.
+
+
+Whitespace Syntax
+-----------------
+
+WsBlank <- '\40'  #Space character. PEG does escapes in octal.
+
+WsNl <- '\12' / '\15\12'   #Tonel Writers must always use the alternative native to the local platform.
+
+WsTab <- '\11'
+
+WsTabTab <- WsTab WsTab
+
+Whitespace <- ('\40' / '\11' / '\12' / '\15')+  #Tonel Readers must accept all these characters as whitespace. 
+Readers MAY also accept other non-printing Unicode codepoints (such as non-breaking space) as whitespace. 
+Tonel writers must never output arbitrary whitespace between syntactic elements, but follow the Ws* productions.
+
+
+Tonel STON
+----------
+
+Tonel STON is a simplified version of Smalltalk Object Notation (https://github.com/svenvc/ston). Tonel STON is a subset of standard STON with a Tonel-specific interpretation of class tags. For instance, the class tag "Class" has different content and interpretation than it would in standard STON.
+
+For Tonel STON, each section has mandatory keys and optional keys as specified below. Tonel Writers must write all mandatory keys before any optional keys. Mandatory keys must be written in the order they are specified below. Any optional keys must be written after the mandatory keys. Optional keys must be written sorted in code point order of the key symbol.
+
 
 Optional Keys
 -------------
 
 Some Tonel STON objects are specified below with optional keys that, if they appear, must have a specified meaning. Implementations may also define implementation-specific or Smalltalk-dialect-specific keys. These keys must have a short prefix ending with an underscore indicating the implementation or dialect for which they are used. Examples might be 'gs_' for GemStone, 'va_' for VAST, etc.
 
-Because Tonel Writers may write prefixed keys not specified herein, Tonel Readers must be prepared to read keys unknown to the implementation, to which they cannot assign a meaning. Tonel Readers must accept these keys and their associated values, arrange for them to be remembered, and Tonel Writers should write these keys unchanged from when they were read. The specific mechanism used for remembering these key-value pairs belongs in the realm of a package manager, and is therefore beyond the scope of this standard.
+Because Tonel Writers may write prefixed optional keys not specified herein, Tonel Readers must be prepared to read keys unknown to the implementation, to which they cannot assign a meaning. Tonel Readers must accept these keys and their associated values, arrange for them to be remembered, and Tonel Writers should write these keys unchanged from when they were read. The specific mechanism used for remembering these key-value pairs belongs in the realm of a package manager, and is therefore beyond the scope of this standard.
 
-
-=============
-
-Details
--------
-
-Whitespace
-
-Line ending conventions
-In all Tonel files, line ends shall use the convention of the local operating system environment. This means CRLF for Windows, LF for Unix/Mac. It is recommended that users of Tonel configure their Git repositories to use LF line endings internally, and let Git handle the translation on the way in and out. A single LF (Unix) or CRLF sequence (Windows) is referred to below as a "newline."
-Tonel files can also contain multi-line Smalltalk string literals. Tonel Writers and Readers shall use the local OS environment in these cases, converting if necessary from the internal line end used by the local Smalltalk implementation.
-
-Where whitespace is specified herein, Tonel writers shall write the exact sequence and number of spaces, tabs, and newlines specified herein.
-Tonel readers shall allow any number and sequence of spaces, tabs, newlines, and optionally other whitespace characters (e.g. non-breaking space) wherever the syntax specifies "whitespace."
-
-=================
-
-Tonel STON
-
-Tonel uses a simplified version of STON called "Tonel STON." It is mostly a subset of STON. Additionally, the allowable class tags are limited to specific values with different interpretations than in standard STON. For instance, the class tag "Class" has has different content than it would in standard STON.
-
-Syntax of Tonel STON
-This syntax is presented in PEG format (see https://en.wikipedia.org/wiki/Parsing_expression_grammar and 
-https://pdos.csail.mit.edu/~baford/packrat/popl04/peg-popl04.pdf). Its structure mimics the structure of that in the STON specification, so that it is easy to compare with that specification to see the differences.
-
-All productions with a name starting with "Ws" should be considered equivalent to "Whitespace" by Tonel Readers, but Tonel Writers should use the specific definition. For example, "WsTabTab" is defined as a  sequence of two tab characters. At a point in the grammar where this production appears, Tonel Writers must write exactly these two bytes, but Tonel Readers must accept any sequence of whitespace characters.
 
 TonelFileObject <- 'TonelFile' WsBlank Map
 
 PackagePropertiesObject <- 'Package' WsBlank Map
 
-TonelClassObject <- 'Class' WsBlank Map
+TonelClassDefinitionObject <- 'Class' WsBlank Map
 
 TonelClassExtensionObject <- 'Extension' WsBlank Map
 
@@ -194,13 +236,13 @@ NotLastAssociationLine <- WsTab Association ',' WsNl
 
 LastAssociationLine <- WsTab Association WsNl
 
+Association <- SimpleSymbol WsBlank ':' WsBlank (String | List)
+
 List <- '[' WsNl ListElements ']' WsNl
 
 ListElements <- (ListElement WsNl) | (ListElement ',' WsNl ListElements)
 
 ListElement <- WsTabTab string 
-
-Association <- SimpleSymbol WsBlank ':' WsBlank (String | List)
 
 String <- "'" StringChars "'"
 
@@ -213,21 +255,10 @@ StringEscape <- '\\\\' / "\\'"
 To avoid ambiguity in the representation of strings, Tonel Writers must not use any other STON string escapes.
 Tonel Readers may accept other STON string escapes.)
 
-DecimalDigit <- [0-9]
-
 SimpleSymbol <- '#' SimpleSymbolChar+
 
-SimpleSymbolChar <- [A-Z] / [a-z] / DecimalDigit / '-' / '_' / '.' / '/'
+SimpleSymbolChar <- [A-Z] / [a-z] / [0-9] / '-' / '_' / '.' / '/'
 
-WsBlank <- '\40'  #Space character. PEG does escapes in octal.
-
-WsNl <- '\12' / '\15\12'   #Tonel Writers should always use the alternative native to the local platform.
-
-WsTab <- '\11'
-
-WsTabTab <- WsTab WsTab
-
-Whitespace <- ('\40' / '\11' / '\12' / '\15')+ #Tonel Readers must accept all these characters as whitespace. Readers MAY also accept other non-printing Unicode codepoints (such as non-breaking space) as whitespace. Tonel writers must never output arbitrary whitespace between syntactic elements, but follow the Ws* productions.
 
 ======================
 
@@ -327,7 +358,7 @@ When a Tonel Writer writes a method's source using Tonel STON, all of the keys #
 Class definitions
 -----------------
 
-Classes are defined in Tonel STON with the syntax of TonelClassObject.
+Classes are defined in Tonel STON with the syntax of TonelClassDefinitionObject.
 
 Mandatory keys are:
 
@@ -419,7 +450,7 @@ A class definition directory contains a properties.st file and two subdirectorie
 
 The properties.st file of a class definition directory contains a TonelFile header, a class comment, and a class definition. The syntax of this file is:
 
-ClassDefinitionPropertiesFile <- TonelFileObject WsNl Comment TonelClassObject
+ClassDefinitionPropertiesFile <- TonelFileObject WsNl Comment TonelClassDefinitionObject
 
 Note that the comment is mandatory, though it may be empty.
 
@@ -527,13 +558,13 @@ The syntax of a class definition file is:
 
 ClassDefinitionFile <- TonelFileObject WsNl ClassDefinition
 
-ClassDefinition <- Comment? TonelClassObject (WsNl SmalltalkMethods)?
+ClassDefinition <- Comment? TonelClassDefinitionObject (WsNl SmalltalkMethods)?
 
 SmalltalkMethods <- (DescribedSmalltalkMethod WsNl SmalltalkMethods) / DescribedSmalltalkMethod
 
 The Comment is the comment of the class. Note that the comment is mandatory, though it may be empty.
 
-The mandatory and optional keys of the TonelClassObject and any TonelMethodDescriptors are the same as in the file-per-method format.
+The mandatory and optional keys of the TonelClassDefinitionObject and any TonelMethodDescriptors are the same as in the file-per-method format.
 
 Note that it is permitted for a class definition to contain no methods. Any methods present must be ordered. Class methods come first, followed by instance methods. Within each of these two categories, methods must be sorted by selector, in code point sort order.
 
