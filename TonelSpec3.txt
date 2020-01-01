@@ -81,6 +81,8 @@ There are a small number of exceptions to this simple rule, detailed below.
 
 <end non-normative section>
 
+
+
 ==================================================================================
 
 Things in common between the formats
@@ -192,7 +194,7 @@ WsTabTab <- WsTab WsTab
 
 Whitespace <- ('\40' / '\11' / '\12' / '\15')+  #Tonel Readers must accept all these characters as whitespace. 
 Readers MAY also accept other non-printing Unicode codepoints (such as non-breaking space) as whitespace. 
-Tonel writers must never output arbitrary whitespace between syntactic elements, but follow the Ws* productions.
+Tonel writers must never output arbitrary whitespace between elements of Tonel syntax, but follow the Ws* productions.
 
 
 Tonel STON
@@ -238,7 +240,7 @@ LastAssociationLine <- WsTab Association WsNl
 
 Association <- SimpleSymbol WsBlank ':' WsBlank (String | List)
 
-List <- '[' WsNl ListElements ']' WsNl
+List <- '[' WsNl ListElements WsTab ']' WsNl
 
 ListElements <- (ListElement WsNl) | (ListElement ',' WsNl ListElements)
 
@@ -275,28 +277,38 @@ Optional keys in file headers are allowed, but discouraged.
 
 For this version of the Tonel spec, the value associated with #tonelVersion must be the string '1.0'.
 The value associated with #name must be the canonical name of the file it is contained in.
-#contentType will vary as specified below. The standard #contentTypes are specified below. Implementations must ignore and not change any file with a #contentType that it does not recognize. Implementations writing files with non-standard #contentType must prefix the content type the same prefix used for implementation-specific or Smalltalk-dialect-specific keys in Tonel STON.
+#contentType will vary. The standard #contentTypes are specified below. Implementations must ignore and not change any file with a non-standard #contentType that it does not recognize. Implementations writing files with non-standard #contentType must prefix the content type with the same prefix used for implementation-specific or Smalltalk-dialect-specific keys in Tonel STON.
 
 =====================
 
 Comments
 --------
 
-Comments must appear in Tonel files where specified below, and only where specified below. These comments are significant. They are not comments on the Tonel file itself, they are package, class, or method comments. The syntax of a comment is:
+Comments must appear in Tonel files where specified below, and only where specified below. These comments are significant. They are not comments on the Tonel file itself, they are package or class comments. The syntax of a comment is:
 
 Comment <- '"' ((!'"' .) / '""')* '"' WsNl WsNl
 
 
-=====================
+=======================
+
+Representation of Methods
+-------------------------
+
+Tonel has two ways of representing a method. Most methods enclose the source code in square brackets using the syntax SquareBracketMethod (detailed below), with other information about the method contained in a Tonel STON TonelMethodDescriptor.
+
+For a TonelReader to be able to correctly find the right bracket that denotes the end of the method, the method itself must contain properly balanced square brackets. Any other square brackets in the method must be in a string literal or a comment. 
+
+
+
 
 Smalltalk method source
 -----------------------
 
-Tonel has two ways of representing method source: as a Tonel STON value associated with the key #source, and as source code enclosed in square brackets using the syntax SmalltalkMethod.
+Tonel has two ways of representing method source: as a Tonel STON value associated with the key #source, and as source code enclosed in square brackets using the syntax SquareBracketsMethod.
 
 Smalltalk method source in square brackets must appear in Tonel files where specified below, and only where specified below. Tonel Readers must recognize enough Smalltalk syntax to be able to reliably detect the boundaries of the method. Tonel Readers are discouraged from syntactic or semantic analysis of method source beyond the syntax in this section.
 
-SmalltalkMethod <- MethodIdentification WsBlank '[' WsNl SmalltalkCode WsNl ']' WsNl
+SquareBracketsMethod <- MethodIdentification WsBlank '[' WsNl SmalltalkCode WsNl ']' WsNl
 
 MethodIdentification <- ClassIdentifier WsBlank '>>' WsBlank MethodPattern
 
@@ -318,15 +330,15 @@ SmalltalkBlock <- '[' SmalltalkCode ']'
 
 OtherSmalltalkCode <- (!('"' / "'" / '$' / '[') .)*
 
-The full source code of a method described using this syntax is the concatenation of the MethodPattern, a newline, and the SmmalltalkCode from the SmalltalkMethod production.
+The full source code of a method described using this syntax is the concatenation of the MethodPattern, a newline, and the SmmalltalkCode from the SquareBracketsMethod production.
 
-All methods that can syntactically be represented as SmalltalkMethod must be so represented by Tonel Writers. ANSI Smalltalk, and most code in most Smalltalk dialects, can be represented in SmalltalkMethod syntax. 
+All methods that can syntactically be represented as SquareBracketsMethod must be so represented by Tonel Writers. ANSI Smalltalk, and most code in most Smalltalk dialects, can be represented in SquareBracketsMethod syntax. 
 
 Some current Smalltalk dialects allow embedding of code from other languages into method source. To allow for this, and for similar capabilities of possible future Smalltalk dialects, the alternative of representing method source as a Tonel STON value is provided. 
 
-For example, if some dialect were to allow embedding of C code into method source, a C comment such as "/* ] */" would be likely to be erroneously recognized by the SmalltalkMethod syntax to be the end of the method, since that syntax does not understand that the right bracket is in a comment.
+For example, if some dialect were to allow embedding of C code into method source, a C comment such as "/* ] */" would be likely to be erroneously recognized by the SquareBracketsMethod syntax to be the end of the method, since that syntax does not understand that the right bracket is in a comment.
 
-Method source that cannot be syntactically represented by the above SmalltalkMethod grammar must be represented in the Tonel STON for that method. The keys used for this are #isMeta, #selector, and #source. 
+Method source that cannot be syntactically represented by the above SquareBracketsMethod grammar must be represented in the Tonel STON for that method. The keys used for this are #isMeta, #selector, and #source. 
 
 The value corresponding to the key #isMeta must be the Tonel STON string 'false' or the string 'true'.
 
@@ -341,9 +353,9 @@ The value corresponding to the key #source is a Tonel STON string containing the
     ^ super at: index put: value
 '
 
-When a Tonel Writer writes a method's source in SmalltalkMethod syntax, the Tonel STON describing that method must not contain any of the keys #isMeta, #selector, or #source. 
+When a Tonel Writer writes a method's source in SquareBracketsMethod syntax, the Tonel STON describing that method must not contain any of the keys #isMeta, #selector, or #source. 
 
-When a Tonel Writer writes a method's source using Tonel STON, all of the keys #isMeta, #selector, and #source must be in the TonelMethodDescriptor, and a SmalltalkMethod must not follow the TonelMethodDescriptor. Since these keys are not mandatory, they must appear in code point sort order after the mandatory keys.
+When a Tonel Writer writes a method's source using Tonel STON, all of the keys #isMeta, #selector, and #source must be in the TonelMethodDescriptor, and a SquareBracketsMethod must not follow the TonelMethodDescriptor. Since these keys are not mandatory, they must appear in code point sort order after the mandatory keys.
 
 
 *** Dale points out that putting the class name in each MethodIdentification is redundant, and that would be simpler to omit it. 
@@ -498,7 +510,7 @@ The contents of a method file have the syntax:
 
 TonelMethodFile <- TonelFileObject WsNl DescribedSmalltalkMethod
 
-DescribedSmalltalkMethod <- TonelMethodDescriptor SmalltalkMethod?
+DescribedSmalltalkMethod <- TonelMethodDescriptor SquareBracketsMethod?
 
 Mandatory keys in a TonelMethodDescriptor are:
 
@@ -509,7 +521,7 @@ Defined optional keys are:
 #category : String category name
 #source : String method source
 
-When the key #source is used to provide the source code for a method, the SmalltalkMethod must be empty. This alternate way of providing method source code should only be used when the source contains syntax that is far enough from standard Smalltalk that it cannot be accurately represented in SmalltalkMethod syntax.
+When the key #source is used to provide the source code for a method, the SquareBracketsMethod must be empty. This alternate way of providing method source code should only be used when the source contains syntax that is far enough from standard Smalltalk that it cannot be accurately represented in SquareBracketsMethod syntax.
 
 ==========================================================================================
 
