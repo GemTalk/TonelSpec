@@ -296,17 +296,39 @@ Representation of Methods
 
 Tonel has two ways of representing a method. Most methods enclose the source code in square brackets using the syntax SquareBracketMethod (detailed below), with other information about the method contained in a Tonel STON TonelMethodDescriptor.
 
-For a TonelReader to be able to correctly find the right bracket that denotes the end of the method, the method itself must contain properly balanced square brackets. Any other square brackets in the method must be in a string literal or a comment. 
+For a TonelReader to be able to correctly find the right bracket that denotes the end of the method, the method itself must contain properly balanced square brackets. The SquareBracketMethod syntax compensates for unbalanced square brackets that appear in character literals, string literals, and comments. However, some Smalltalks permit extended syntax that can result in some methods being unable to be represented in SquareBracketMethod syntax. One example is Smalltalk/X, which allows C code to be embedded in Smalltalk methods.
+
+To allow arbitrary syntax to be expressed in Tonel methods, a method that cannot be represented in SquareBracketMethod syntax must have its behavior, selector, and source included in the Tonel STON TonelMethodDescriptor.
+
+Every method whose source *can* be represented in SquareBracketMethod form *must* be so represented. Only methods that cannot be represented in SquareBracketMethod form may include their source code in the TonelMethodDescriptor.
 
 
+TonelMethodDescriptors
+----------------------
+
+Mandatory keys in a TonelMethodDescriptor are:
+
+If a method's source code is being included in a TonelMethodDescriptor, three keys are mandatory. If the source of a method is able to be represented as a SquareBracketMethod, these three keys are prohibited for that method:
+
+#selector : The selector as a String (Note: A String, *not* a Symbol. *All* Tonel STON values are Strings.)
+
+#isMeta : The String 'true' if the method is a class-side method, 'false' if instance-side.
+
+#source : The method's full source code as a String.
 
 
-Smalltalk method source
------------------------
+*** What are the other mandatory and defined optional keys of a TonelMethodDescriptor? Pharo 7 just uses #category. It's not clear to me that this should be mandatory, though it should probably be a defined optional key.
 
-Tonel has two ways of representing method source: as a Tonel STON value associated with the key #source, and as source code enclosed in square brackets using the syntax SquareBracketsMethod.
 
-Smalltalk method source in square brackets must appear in Tonel files where specified below, and only where specified below. Tonel Readers must recognize enough Smalltalk syntax to be able to reliably detect the boundaries of the method. Tonel Readers are discouraged from syntactic or semantic analysis of method source beyond the syntax in this section.
+Defined optional keys are:
+
+#category : String category name
+
+
+SquareBracketsMethod syntax
+---------------------------
+
+DescribedSmalltalkMethod <- TonelMethodDescriptor SquareBracketsMethod?
 
 SquareBracketsMethod <- MethodIdentification WsBlank '[' WsNl SmalltalkCode WsNl ']' WsNl
 
@@ -332,30 +354,6 @@ OtherSmalltalkCode <- (!('"' / "'" / '$' / '[') .)*
 
 The full source code of a method described using this syntax is the concatenation of the MethodPattern, a newline, and the SmmalltalkCode from the SquareBracketsMethod production.
 
-All methods that can syntactically be represented as SquareBracketsMethod must be so represented by Tonel Writers. ANSI Smalltalk, and most code in most Smalltalk dialects, can be represented in SquareBracketsMethod syntax. 
-
-Some current Smalltalk dialects allow embedding of code from other languages into method source. To allow for this, and for similar capabilities of possible future Smalltalk dialects, the alternative of representing method source as a Tonel STON value is provided. 
-
-For example, if some dialect were to allow embedding of C code into method source, a C comment such as "/* ] */" would be likely to be erroneously recognized by the SquareBracketsMethod syntax to be the end of the method, since that syntax does not understand that the right bracket is in a comment.
-
-Method source that cannot be syntactically represented by the above SquareBracketsMethod grammar must be represented in the Tonel STON for that method. The keys used for this are #isMeta, #selector, and #source. 
-
-The value corresponding to the key #isMeta must be the Tonel STON string 'false' or the string 'true'.
-
-The value corresponding to the key #selector is a Tonel STON string (not a symbol) giving the selector. For example, one legal Tonel STON association for a selector is:
-
-#selector : 'at:put:'
-
-The value corresponding to the key #source is a Tonel STON string containing the full source code of the method, *including* the method pattern. For example:
-
-#source : 'at: index put: value
-    "This is a comment on an unnecessary method."
-    ^ super at: index put: value
-'
-
-When a Tonel Writer writes a method's source in SquareBracketsMethod syntax, the Tonel STON describing that method must not contain any of the keys #isMeta, #selector, or #source. 
-
-When a Tonel Writer writes a method's source using Tonel STON, all of the keys #isMeta, #selector, and #source must be in the TonelMethodDescriptor, and a SquareBracketsMethod must not follow the TonelMethodDescriptor. Since these keys are not mandatory, they must appear in code point sort order after the mandatory keys.
 
 
 *** Dale points out that putting the class name in each MethodIdentification is redundant, and that would be simpler to omit it. 
@@ -509,8 +507,6 @@ The canonical name of a method file is <methodSelector>.st.
 The contents of a method file have the syntax:
 
 TonelMethodFile <- TonelFileObject WsNl DescribedSmalltalkMethod
-
-DescribedSmalltalkMethod <- TonelMethodDescriptor SquareBracketsMethod?
 
 Mandatory keys in a TonelMethodDescriptor are:
 
