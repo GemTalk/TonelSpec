@@ -1,5 +1,3 @@
-*** Where is the syntax of FileHeader defined?
-
 =======================
 
 Tonel File and Directory Format Specification, version 1.0 draft 1
@@ -46,7 +44,9 @@ About this specification
 
 This specification defines the format of the files and directories that are to be produced by an abstract software entity called a Tonel Writer, and to be recognized by an abstract software entity called a Tonel Reader. Each implementation that complies with this specification will have its own way of making concrete these abstract entities. Since one of the goals of Tonel is to be human-readable and, when necessary, editable by humans in a normal text editor, it must be made clear that a human is not a Tonel Reader, and a text editor is not a Tonel Writer -- these terms are reserved for software that understands the Tonel format.
 
-Where not otherwise specified herein, the rule is that Tonel writers must strictly follow the format, and Tonel readers should be permissive (where possible) of slight deviations from the precise format. For example, the exact whitespace characters to be used by writers is specified, but any whitespace sequences should be accepted by readers. Relaxed reading is necessary to allow humans to edit Tonel files without getting every last detail right. Strict writing is necessary to avoid identical code written by different Tonel implementations having differences in Git.
+Where not otherwise specified herein, the rule is that Tonel Writers must strictly follow the format, and Tonel Readers should be permissive (where possible) of slight deviations from the precise format. For example, the exact whitespace characters to be used by writers is specified, but any whitespace sequences should be accepted by readers. Relaxed reading is necessary to allow humans to edit Tonel files without getting every last detail right. Strict writing is necessary to avoid identical code written by different Tonel implementations having differences in Git.
+
+To conform to this specification, a Tonel Writer and Tonel Reader must both be implemented. A third software entity may also be implemented, a Tonel Verifier. A Tonel Verifier is similar to a Tonel Reader, but strictly enforces the Tonel format. Its primary purpose is the testing of Tonel Writers.
 
 Terms: Must, should, may:
 An implementation of a Tonel Reader or Tonel Writer does not conform with this specification unless its behavior matches every part of this specification that uses the word "must." If the word "should" is used to describe a behavior, that behavior is highly recommended, but not mandatory for conformance. If the word "may" is used, the described behavior will not prevent conformance. If none of the qualifiers "must," "should," or "may" appear, the described behavior is mandatory, as if the word "must" was used.
@@ -278,11 +278,24 @@ Mandatory keys in file headers:
 #contentType
 #name 
 
-Optional keys in file headers are allowed, but discouraged.
-
 For this version of the Tonel spec, the value associated with #tonelVersion must be the string '1.0'.
 The value associated with #name must be the canonical name of the file it is contained in.
 #contentType will vary. The standard #contentTypes are specified below. Implementations must ignore and not change any file with a non-standard #contentType that it does not recognize. Implementations writing files with non-standard #contentType must prefix the content type with the same prefix used for implementation-specific or Smalltalk-dialect-specific keys in Tonel STON.
+
+
+Defined optional keys in file headers:
+#license
+#copyright
+
+Tonel Writers must write the key/value associations for #license and/or #copyright when, and only when, they are defined in the package properties. Whenever written, they must have the same value as the value for the corresponding key in the package properties. 
+
+Tonel Readers must ignore #license and #copyright keys in file headers. 
+
+Tonel Verifiers must verify that the keys #copyright and #license appear in file headers if and only if the matching key appears in the package properties, and that if the keys appear the corresponding values are identical.
+
+*** Any other mandatory or defined optional keys?
+
+Implementation-specific optional keys in file headers are allowed, but discouraged. Tonel implementations are not required to remember and re-write any implementation-specific optional file header keys that they do not recognize, though they are encouraged to do so when possible.
 
 =====================
 
@@ -439,11 +452,22 @@ A package directory contains a properties.st file and a directory for each class
 
 The properties.st file of a package directory contains a TonelFile header, an optional package comment, followed by a package definition. The syntax of this file is:
 
-PackagePropertiesFile <- FileHeader WsNl Comment? PackagePropertiesObject
+PackagePropertiesFile <- TonelFileObject WsNl Comment? PackagePropertiesObject
 
-The only mandatory key of a PackagePropertiesObject is #name. The associated value is both the name of the package and the canonical name of the directory in which the properties.st file appears.
+The mandatory keys of PackagePropertiesObject are:
+#name
+
+The value associated with #name is both the name of the package and the canonical name of the directory in which the properties.st file appears.
+
+The defined optional keys of PackagePropertiesObject are:
+#copyright
+#license
+
+The values associated with #copyright and #license describe the legal status of the code in the package. These keys are optional, but their use is encouraged. When either or both of #copyright and #license is used, Tonel Writers must also write these key/value associations into the file header of every file in the Tonel representation of the package.
 
 *** Should there be any other mandatory keys or defined optional keys for package properties?
+
+
 
 
 Class Directories
@@ -617,7 +641,7 @@ A package file's canonical name is the name of the package being defined, follow
 
 The syntax of a package file is:
 
-PackageFile <- FileHeader WsNl Comment? PackagePropertiesObject WsNl PackageContents
+PackageFile <- TonelFileObject WsNl Comment? PackagePropertiesObject WsNl PackageContents
 
 PackageContents <- (ClassDefinitions WsNl ClassExtensions) / ClassDefinitions / ClassExtensions
 
