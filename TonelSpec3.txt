@@ -197,7 +197,8 @@ WsTab <- '\11'
 
 WsTabTab <- WsTab WsTab
 
-Whitespace <- ('\40' / '\11' / '\12' / '\15')+  #Tonel Readers must accept all these characters as whitespace. 
+Whitespace <- ('\40' / '\11' / '\12' / '\15')+ 
+Tonel Readers must accept at least these four characters as whitespace. 
 Readers may also accept other non-printing Unicode codepoints (such as non-breaking space) as whitespace. 
 Tonel writers must never output arbitrary whitespace between elements of Tonel syntax, but follow the Ws* productions.
 
@@ -218,11 +219,15 @@ Some Tonel STON objects are specified below with optional keys that, if they app
 Because Tonel Writers may write prefixed optional keys not specified herein, Tonel Readers must be prepared to read keys unknown to the implementation, to which they cannot assign a meaning. Tonel Readers must accept these keys and their associated values, arrange for them to be remembered, and Tonel Writers should write these keys unchanged from when they were read. The specific mechanism used for remembering these key-value pairs belongs in the realm of a package manager, and is therefore beyond the scope of this standard.
 
 
+Tonel STON Syntax
+-----------------
+
+
 TonelFileObject <- 'TonelFile' WsBlank Map
 
 PackagePropertiesObject <- 'Package' WsBlank Map
 
-TonelClassDefinitionObject <- 'Class' WsBlank Map
+ClassPropertiesObject <- 'Class' WsBlank Map
 
 TonelClassExtensionObject <- 'Extension' WsBlank Map
 
@@ -320,6 +325,12 @@ To allow arbitrary syntax to be expressed in Tonel methods, a method that cannot
 
 Every method whose source *can* be represented in SquareBracketMethod form *must* be so represented. Only methods that cannot be represented in SquareBracketMethod form may include their source code in the TonelMethodDescriptor.
 
+The syntax for a method is:
+
+DescribedSmalltalkMethod <- TonelMethodDescriptor SquareBracketsMethod?
+
+The optional SquareBracketsMethod in the above production is forbidden if the source is being included in the TonelMethodDescriptor, mandatory if it is not. 
+
 
 TonelMethodDescriptors
 ----------------------
@@ -332,7 +343,7 @@ If a method's source code is being included in a TonelMethodDescriptor, three ke
 
 #isMeta : The String 'true' if the method is a class-side method, 'false' if instance-side.
 
-#source : The method's full source code as a String.
+#source : The method's full source code as a String. This source *includes* the method pattern.
 
 
 *** What are the other mandatory and defined optional keys of a TonelMethodDescriptor? Pharo 7 just uses #category. It's not clear to me that this should be mandatory, though it should probably be a defined optional key.
@@ -345,8 +356,6 @@ Defined optional keys are:
 
 SquareBracketsMethod syntax
 ---------------------------
-
-DescribedSmalltalkMethod <- TonelMethodDescriptor SquareBracketsMethod?
 
 SquareBracketsMethod <- MethodIdentification WsBlank '[' WsNl SmalltalkCode WsNl ']' WsNl
 
@@ -381,14 +390,21 @@ The full source code of a method described using this syntax is the concatenatio
 *** Possible replacements for ClassName >> MethodPattern could be 'instance >> MethodPattern' and 'class >> MethodPattern'.
 
 
-=================
+=========================
+
+Representation of Classes
+-------------------------
 
 Class definitions
 -----------------
 
-Classes are defined in Tonel STON with the syntax of TonelClassDefinitionObject.
+Classes are defined in Tonel STON with the syntax of ClassProperties:
 
-Mandatory keys are:
+ClassProperties <- Comment? ClassPropertiesObject
+
+The optional Comment is the class comment, which should describe the class being defined.
+
+Mandatory keys of the ClassPropertiesObject are:
 
 #name : String class name
 #superclass : String class name
@@ -407,13 +423,10 @@ Defined optional keys are:
 *** Any other defined optional keys?
 
 
-
-===================
-
 Class extensions
 ----------------
 
-Classes are extended (given additional methods) in Tonel STON with the syntax of TonelClassExtensionObject.
+Classes are extended (given additional methods) in Tonel STON using the syntax of TonelClassExtensionObject.
 
 Mandatory keys are:
 
@@ -421,11 +434,41 @@ Mandatory keys are:
 
 The value associated with the key #name is the name of the class being extended.
 
+
+==========================
+
+Representation of Packages
+--------------------------
+
+Definition and properties of packages uses the syntax:
+
+PackageProperties <- Comment? PackagePropertiesObject
+
+The optional Comment is the package comment, which should describe the package.
+
+The mandatory keys of PackagePropertiesObject are:
+#name
+
+The value associated with #name is the name of the package.
+
+The defined optional keys of PackagePropertiesObject are:
+#copyright
+#license
+
+The values associated with #copyright and #license describe the legal status of the code in the package. These keys are optional, but their use is encouraged. When either or both of #copyright and #license is used, Tonel Writers must also write these key/value associations into the file header of every file in the Tonel representation of the package.
+
+*** Should there be any other mandatory keys or defined optional keys for package properties?
+
+*** Should we specify some standard values for #license? For open-source, the SPDX license identifier would seem to be a good choice (see https://spdx.org/ids). For proprietary software, the string "All Rights Reserved" would seem reasonable. 
+
+
+
 ======================================================================================
 
 THE FORMATS
 
 ======================================================================================
+
 
 The file-per-method format
 ==========================
@@ -433,7 +476,7 @@ The file-per-method format
 Directory structure
 -------------------
 
-The directory for a package contains a file named "properties.st" and a directory for each class class defined or extended in the package.
+The directory for a package contains a file named "properties.st" and a directory for each class defined or extended in the package.
 
 Package directory
   properties.st
@@ -446,28 +489,15 @@ Package directory
 Package Directory
 -----------------
 
-A package directory's canonical name is the name of the package.
+A package directory's canonical name is the name of the package, as specified in the properties.st file in that directory.
 
 A package directory contains a properties.st file and a directory for each class defined or extended by the package.
 
-The properties.st file of a package directory contains a TonelFile header, an optional package comment, followed by a package definition. The syntax of this file is:
+The properties.st file of a package directory contains a TonelFile header followed by a package definition. The syntax of this file is:
 
-PackagePropertiesFile <- TonelFileObject WsNl Comment? PackagePropertiesObject
+PackagePropertiesFile <- TonelFileObject WsNl PackageProperties
 
-The mandatory keys of PackagePropertiesObject are:
-#name
-
-The value associated with #name is both the name of the package and the canonical name of the directory in which the properties.st file appears.
-
-The defined optional keys of PackagePropertiesObject are:
-#copyright
-#license
-
-The values associated with #copyright and #license describe the legal status of the code in the package. These keys are optional, but their use is encouraged. When either or both of #copyright and #license is used, Tonel Writers must also write these key/value associations into the file header of every file in the Tonel representation of the package.
-
-*** Should there be any other mandatory keys or defined optional keys for package properties?
-
-
+In this file's TonelFileObject, the value associated with #contentType must be 'packageDirectory'.
 
 
 Class Directories
@@ -478,7 +508,6 @@ A class directory represents either the definition of a class and its methods wi
 Tonel Readers must report an error if a class is defined more than once in the same package, or is extended more than once in the same package, or is both defined and extended in the same package.
 
 
-
 Class Definition Directory
 --------------------------
 
@@ -486,19 +515,23 @@ A class definition directory's canonical name is the name of the class being def
 
 A class definition directory contains a properties.st file and two subdirectories, whose canonical names and filesystem names are 'instance' and 'class'. Tonel Readers must ignore, and Tonel Writers must not modify, any other files or subdirectories of a class definition directory.
 
-The properties.st file of a class definition directory contains a TonelFile header, an optional class comment, and a class definition. The syntax of this file is:
+Tonel Writers must write both the 'instance' and 'class' subdirectories, and the properties.st files within them, even if there are no other contents for those directories. Tonel Readers must interpret the absence of one or both of these subdirectories as equivalent to a directory defining no methods.
 
-ClassDefinitionPropertiesFile <- TonelFileObject WsNl Comment? TonelClassDefinitionObject
+The properties.st file of a class definition directory contains a TonelFile header followed by the class definition. The syntax of this file is:
+
+ClassDefinitionPropertiesFile <- TonelFileObject WsNl ClassProperties
+
+In this file's TonelFileObject, the value associated with #contentType must be 'classDefinitionDirectory'.
 
 
 Class Extension Directory
 -------------------------
 
-A class extension directory's canonical name is the name of the class being defined, followed by '.extension'. For example, the class Object would be extended by a directory whose canonical name is 'Object.extension'.
-
-The canonical name of a class extension directory is <className>.extension
+A class extension directory's canonical name is the name of the class being extended, followed by '.extension'. For example, methods would be added to the class Object by a directory whose canonical name is 'Object.extension'.
 
 A class extension directory contains a properties.st file and two subdirectories, whose canonical names and filesystem names are 'instance' and 'class'. Tonel Readers must ignore, and Tonel Writers must not modify, any other files or subdirectories of a class definition directory.
+
+Tonel Writers must write both the 'instance' and 'class' subdirectories, and the properties.st files within them, even if there are no other contents for those directories. Tonel Readers must interpret the absence of one or both of these subdirectories as equivalent to a directory defining no methods.
 
 The grammar of the properties.st file in a class extension directory is:
 
@@ -528,25 +561,24 @@ Method files
 
 The canonical name of a method file is <methodSelector>.st.
 
-*** Do we want to specify the mapping from canonical name to filesystem name for characters such as colon? Do we want to use the same convention as FileTree did for this?
+*** Do we want to specify the mapping from canonical name to filesystem name for characters such as slash? Do we want to use the same convention as FileTree did for this?
 
 The contents of a method file have the syntax:
 
 TonelMethodFile <- TonelFileObject WsNl DescribedSmalltalkMethod
 
-Mandatory keys in a TonelMethodDescriptor are:
+In each method file's TonelFileObject, the value associated with #contentType must be 'method'.
 
-*** What are the mandatory and defined optional keys of a TonelMethodDescriptor? Pharo 7 just uses #category. It's not clear to me that this should be mandatory, though it should probably be a defined optional key.
+See the Representation of Methods section for mandatory and optional keys of the DescribedSmalltalkMethod.
 
-Defined optional keys are:
-
-#category : String category name
-#source : String method source
-
-When the key #source is used to provide the source code for a method, the SquareBracketsMethod must be empty. This alternate way of providing method source code should only be used when the source contains syntax that is far enough from standard Smalltalk that it cannot be accurately represented in SquareBracketsMethod syntax.
 
 ==========================================================================================
 
+*** Note that this spec does not prohibit mixing file-per-method and file-per-class formats in
+*** the same package, though each class must be one or the other.
+*** We should probably either explicitly allow or explicitly prohibit this mixing.
+*** The mixing works technically -- I'm interested in hearing reasoning
+*** for allowing or prohibiting it.
 
 The file-per-class format
 =========================
@@ -572,7 +604,7 @@ A package directory's canonical name is the name of the package.
 
 A package directory contains a properties.st file and a file for each class defined or extended by the package.
 
-The properties.st file of a package directory in file-per-class format is the same as the properties.st file of a package directory in file-per-method format.
+The properties.st file of a package directory in the file-per-class format is the same as the properties.st file of a package directory in the file-per-method format.
 
 
 Class files
@@ -592,13 +624,11 @@ The syntax of a class definition file is:
 
 ClassDefinitionFile <- TonelFileObject WsNl ClassDefinition
 
-ClassDefinition <- Comment? TonelClassDefinitionObject (WsNl SmalltalkMethods)?
+ClassDefinition <- ClassProperties (WsNl SmalltalkMethods)?
 
 SmalltalkMethods <- (DescribedSmalltalkMethod WsNl SmalltalkMethods) / DescribedSmalltalkMethod
 
-The Comment is the comment of the class. Note that the comment is mandatory, though it may be empty.
-
-The mandatory and optional keys of the TonelClassDefinitionObject and any TonelMethodDescriptors are the same as in the file-per-method format.
+In each class definition file's TonelFileObject, the value associated with #contentType must be 'classDefinition'.
 
 Note that it is permitted for a class definition to contain no methods. Any methods present must be ordered. Class methods come first, followed by instance methods. Within each of these two categories, methods must be sorted by selector, in code point sort order.
 
@@ -614,6 +644,7 @@ ClassExtensionFile <- TonelFileObject WsNl ClassExtension
 
 ClassExtension <- TonelClassExtensionObject WsNl SmalltalkMethods
 
+In each class definition file's TonelFileObject, the value associated with #contentType must be 'classExtension'.
 
 The mandatory and optional keys of the TonelClassExtensionObject and any TonelMethodDescriptors are the same as in the file-per-method format.
 
@@ -641,7 +672,7 @@ A package file's canonical name is the name of the package being defined, follow
 
 The syntax of a package file is:
 
-PackageFile <- TonelFileObject WsNl Comment? PackagePropertiesObject WsNl PackageContents
+PackageFile <- TonelFileObject WsNl PackageProperties WsNl PackageContents
 
 PackageContents <- (ClassDefinitions WsNl ClassExtensions) / ClassDefinitions / ClassExtensions
 
@@ -649,7 +680,6 @@ ClassDefinitions <- (ClassDefinition WsNl ClassDefinitions) / ClassDefinition
 
 ClassExtensions <- (ClassExtension WsNl ClassExtensions) / ClassExtension
 
-
-The PackagePropertiesObject and its preceding comment are the same as in the properties.st file of a package directory in file-per-method or file-per-class format.
+In each package file's TonelFileObject, the value associated with #contentType must be 'package'.
 
 Note that a package file must define or extend at least one class. Class definitions and extensions must be ordered. Any class definitions come before any class extensions. Within class definitions, and within class extensions, classes are ordered in code point order of class name.
