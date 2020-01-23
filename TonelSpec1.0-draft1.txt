@@ -68,11 +68,11 @@ File-per-method
 This format is the easiest to merge in Git, since file merges are only required if multiple developers change the same method. It is also easier to track the history of an individual method using standard Git tools. However, on a typical platform a file takes a minimum disk space of several thousand bytes, and Smalltalk methods take much less than this, so file-per-method often takes an order of magnitude more space on disk than the actual source code. 
 It is anticipated that this format might be used for areas of code that are under active development. Large projects might use File-per-method for only a portion of their entire code base, switching to one of the other formats when an area becomes relatively stable.
 
+File-per-class
+This format is anticipated to be the most-used format. Files with class granularity waste much less space than using method granularity, but merging and tracking problems are not as intrusive as with file-per-package.
+
 File-per-package
 This format, unlike the others, contains *all* of the information about a package within a single file. It is anticipated that this will be used as a way to package a stable release version of a package for download. It is less desirable during development.
-
-File-per-class
-This format is the compromise between the other two formats, and is anticipated to be the most-used format. Files with class granularity waste much less space than using method granularity, but merging and tracking problems are still reasonably manageable.
 
 --------
 
@@ -97,7 +97,7 @@ Things in common between the formats
 The directory properties file
 -----------------------------
 
-Each directory in the Tonel file-per-method and Tonel file-per-class formats contains a file with the filesystem name 'properties.st'. This file allows a Tonel Reader to determine what information is represented in the directory. The fact that this file has the same name in every directory makes it easy for a Tonel Reader to find.
+Each directory in the Tonel file-per-method and Tonel file-per-class formats contains a file with the filesystem name 'properties.st'. This file allows a Tonel Reader to determine what information is represented in the directory. The fact that this file has the same name in every directory makes it easy for a Tonel Reader to find. The contents of this file differs by purpose of directory, and is covered below.
 
 
 File and directory names
@@ -107,7 +107,7 @@ Each Tonel file and each Tonel directory has both a canonical name and a filesys
 
 The filesystem name is the name actually found in the filesystem. Whenever possible, the canonical name and the filesystem name must be identical. However, there are several reasons why this might not always be possible:
 * Platform restrictions on filename character set
-* Platform restrictionn on filename length
+* Platform restriction on filename length
 * Name collision due to canonical names that differ only by case in the same directory of a case-insensitive filesystem.
 * Name collision due to two canonical names of "properties.st" in the same directory.
 * Possibly other reasons
@@ -158,7 +158,11 @@ Two areas where this principle of "write strictly, read permissively" applies ar
 
 Ordering
 --------
-Tonel Writers must write the elements of all files in a strict order as specified below. Some sorting is specified below as "code point order." This means in order of increasing Unicode code point, leftmost character the most significant. Using code point order avoids file differences arising from collation differences in different locales.
+Tonel Writers must write the elements of all files in a strict order as specified below. Some sorting is specified below as "code point order." This means to sort in a manner equivalent to the following steps:
+* Perform Unicode normalization of the strings to be sorted to Normalization Form Canonical Composition (NFC). 
+* Sort the normalized strings in order of increasing Unicode code point, leftmost character the most significant. When sorting two normalized strings, one of which is the leading substring of the other, the shorter string must sort before the longer. For example, 'fire' sorts before 'firefighter'.
+
+Using code point order avoids file differences arising from collation differences in different locales.
 
 In cases where the order of elements is not semantically significant (for instance, keys in a dictionary or methods in a class) Tonel Readers must accept those elements in any order. This makes it easier for humans using normal text editors to edit Tonel files to create files that will be accepted by Tonel Readers.
 
@@ -170,6 +174,12 @@ Tonel files can also contain multi-line Smalltalk string literals. Tonel Writers
 
 Where whitespace is specified herein, Tonel writers must write the exact sequence and number of spaces, tabs, and newlines specified herein.
 Tonel readers shall allow any number and sequence of spaces, tabs, newlines, and optionally other whitespace characters (e.g. non-breaking space) wherever the syntax specifies "whitespace."
+
+
+Transience of variations
+------------------------
+
+Because of the principle of reading permissively, a Tonel Reader may successfully read a file that does not strictly conform to Tonel format (because it was written by a human or a faulty Tonel Writer implementation). Reading such a file results in objects representing code components such as methods, classes, and packages. When a Tonel Writer re-writes these components, it must write them in the strict format. Any variations present when reading must *not* be preserved when written by a Tonel Writer. The recommended development practice is to re-write any hand-edited files after they are read, to clean up any non-standard variations in order, whitespace, etc., before committing the files to Git.
 
 
 ==============
@@ -216,7 +226,7 @@ Optional Keys
 
 Some Tonel STON objects are specified below with optional keys that, if they appear, must have a specified meaning. Implementations may also define implementation-specific or Smalltalk-dialect-specific keys. These keys must have a short prefix ending with an underscore indicating the implementation or dialect for which they are used. Examples might be 'gs_' for GemStone, 'va_' for VAST, etc.
 
-Because Tonel Writers may write prefixed optional keys not specified herein, Tonel Readers must be prepared to read keys unknown to the implementation, to which they cannot assign a meaning. Tonel Readers must accept these keys and their associated values, arrange for them to be remembered, and Tonel Writers should write these keys unchanged from when they were read. The specific mechanism used for remembering these key-value pairs belongs in the realm of a package manager, and is therefore beyond the scope of this standard.
+Because Tonel Writers may write prefixed optional keys not specified herein, Tonel Readers must be prepared to read keys unknown to the implementation, to which they cannot assign a meaning. Tonel Readers must accept these keys and their associated values. Except for the Tonel STON used for file headers (details below), the Tonel Reader must arrange for the optional keys and their associated values to be remembered, and Tonel Writers must write these keys unchanged from when they were read. The specific mechanism used for remembering these key-value pairs belongs in the realm of a package manager, and is therefore beyond the scope of this standard.
 
 
 Tonel STON Syntax
@@ -285,7 +295,7 @@ Mandatory keys in file headers:
 
 For this version of the Tonel spec, the value associated with #tonelVersion must be the string '1.0'.
 The value associated with #name must be the canonical name of the file it is contained in.
-#contentType will vary. The standard #contentTypes are specified below. Implementations must ignore and not change any file with a non-standard #contentType that it does not recognize. Implementations writing files with non-standard #contentType must prefix the content type with the same prefix used for implementation-specific or Smalltalk-dialect-specific keys in Tonel STON.
+#contentType will vary. The standard values of #contentType are specified below. Implementations must ignore and not change any file with a non-standard #contentType that it does not recognize. Implementations writing files with non-standard #contentType must prefix the content type with the same prefix used for implementation-specific or Smalltalk-dialect-specific keys in Tonel STON.
 
 
 Defined optional keys in file headers:
@@ -300,7 +310,7 @@ Tonel Verifiers must verify that the keys #copyright and #license appear in file
 
 *** Any other mandatory or defined optional keys?
 
-Implementation-specific optional keys in file headers are allowed, but discouraged. Tonel implementations are not required to remember and re-write any implementation-specific optional file header keys that they do not recognize, though they are encouraged to do so when possible.
+Implementation-specific optional keys in file headers are allowed, but discouraged. Because the file header does not contribute to the semantic content of the package (informally speaking, it's part of the structure and not part of the payload), Tonel implementations are not required to remember and re-write any implementation-specific optional file header keys that they do not recognize, though they are encouraged to do so when possible. When writing a package in a different Tonel format than was read (for instance, reading file-per-class and subsequently writing file-per-package) there may not be a meaningful way to write arbitrary information that was read from file headers.
 
 =====================
 
@@ -327,7 +337,9 @@ Every method whose source *can* be represented in SquareBracketMethod form *must
 
 The syntax for a method is:
 
-DescribedSmalltalkMethod <- TonelMethodDescriptor SquareBracketsMethod?
+DescribedSmalltalkMethod <- TonelMethodDescriptor? SquareBracketsMethod?
+
+The optional TonelMethodDescriptor in the above production is forbidden if there are no keys to put in it, and mandatory otherwise.
 
 The optional SquareBracketsMethod in the above production is forbidden if the source is being included in the TonelMethodDescriptor, mandatory if it is not. 
 
@@ -479,7 +491,7 @@ Directory structure
 The directory for a package contains a file named "properties.st" and a directory for each class defined or extended in the package.
 
 Package directory
-  properties.st
+  properties.st file
   Class1 directory
   Class2 directory
   ...
@@ -497,7 +509,7 @@ The properties.st file of a package directory contains a TonelFile header follow
 
 PackagePropertiesFile <- TonelFileObject WsNl PackageProperties
 
-In this file's TonelFileObject, the value associated with #contentType must be 'packageDirectory'.
+In this file's TonelFileObject, the value associated with #contentType must be 'package'.
 
 
 Class Directories
@@ -521,7 +533,10 @@ The properties.st file of a class definition directory contains a TonelFile head
 
 ClassDefinitionPropertiesFile <- TonelFileObject WsNl ClassProperties
 
-In this file's TonelFileObject, the value associated with #contentType must be 'classDefinitionDirectory'.
+In this file's TonelFileObject, the value associated with #contentType must be 'classDefinition'.
+
+The mandatory and optional keys of the ClassPropertiesObject in the ClassProperties are given above in the "Representation of Classes" section.
+
 
 
 Class Extension Directory
@@ -537,7 +552,9 @@ The grammar of the properties.st file in a class extension directory is:
 
 ClassExtensionPropertiesFile <- TonelFileObject WsNl TonelClassExtensionObject
 
-In this file's TonelFileObject, the value associated with #contentType must be 'classExtensionDirectory'.
+In this file's TonelFileObject, the value associated with #contentType must be 'classExtension'.
+
+The mandatory and optional keys of the TonelClassExtensionObject are given above in the "Representation of Classes" section.
 
 
 Instance and class directories
@@ -549,9 +566,9 @@ Tonel writers must write the subdirectories 'class' and 'instance' under each cl
 
 The properties.st file in each instance or class directory has the syntax TonelFileObject. 
 
-In an instance directory's properties.st file, the #contentType must be 'instanceSideMethodsDirectory'.
+In an instance directory's properties.st file, the #contentType must be 'instanceMethods'.
 
-In a class directory's properties.st file, the #contentType must be 'classSideMethodsDirectory'.
+In a class directory's properties.st file, the #contentType must be 'classMethods'.
 
 In addition to the properties.st file, an instance or class directory contains method files, one per method being defined.
 
@@ -579,6 +596,8 @@ See the Representation of Methods section for mandatory and optional keys of the
 *** We should probably either explicitly allow or explicitly prohibit this mixing.
 *** The mixing works technically -- I'm interested in hearing reasoning
 *** for allowing or prohibiting it.
+
+
 
 The file-per-class format
 =========================
@@ -610,7 +629,7 @@ The properties.st file of a package directory in the file-per-class format is th
 Class files
 -----------
 
-A class file represents either the definition of a class and its methods within a package, or a class extension. A class extension is intended to add methods to a class that is defined in some other package.
+There are two kinds of class files. One kind represents the definition of a class and its methods within a package. The other represents a class extension, intended to add methods to a class that is defined in some other package.
 
 Tonel Readers must report an error if a class is defined more than once in the same package, or is extended more than once in the same package, or is both defined and extended in the same package.
 
@@ -630,7 +649,9 @@ SmalltalkMethods <- (DescribedSmalltalkMethod WsNl SmalltalkMethods) / Described
 
 In each class definition file's TonelFileObject, the value associated with #contentType must be 'classDefinition'.
 
-Note that it is permitted for a class definition to contain no methods. Any methods present must be ordered. Class methods come first, followed by instance methods. Within each of these two categories, methods must be sorted by selector, in code point sort order.
+Note that it is permitted for a class definition to contain no methods. Any methods present must be ordered. Class methods come first, followed by instance methods. Within each of these two categories, methods must be sorted by selector, in code point sort order. 
+
+For every method present and using SquareBracketsMethod syntax, the ClassName in the MethodIdentification must be the same as the value associated with the #name key in the ClassPropertiesObject. Tonel Readers must report an error if this is not the case.
 
 
 Class extension file
@@ -646,9 +667,12 @@ ClassExtension <- TonelClassExtensionObject WsNl SmalltalkMethods
 
 In each class definition file's TonelFileObject, the value associated with #contentType must be 'classExtension'.
 
-The mandatory and optional keys of the TonelClassExtensionObject and any TonelMethodDescriptors are the same as in the file-per-method format.
+The mandatory and optional keys of the TonelClassExtensionObject are given above in the "Representation of Classes" section.
 
 Note that a class extension must contain at least one method. The methods must be ordered. Class methods come first, followed by instance methods. Within each of these two categories, methods must be sorted by selector, in code point sort order.
+
+For every method present and using SquareBracketsMethod syntax, the ClassName in the MethodIdentification must be the same as the value associated with the #name key in the ClassPropertiesObject. Tonel Readers must report an error if this is not the case.
+
 
 
 ==========================================================================================
@@ -683,3 +707,6 @@ ClassExtensions <- (ClassExtension WsNl ClassExtensions) / ClassExtension
 In each package file's TonelFileObject, the value associated with #contentType must be 'package'.
 
 Note that a package file must define or extend at least one class. Class definitions and extensions must be ordered. Any class definitions come before any class extensions. Within class definitions, and within class extensions, classes are ordered in code point order of class name.
+
+For every method present and using SquareBracketsMethod syntax, the ClassName in the MethodIdentification must be the same as the value associated with the #name key in the ClassPropertiesObject of the immediately preceding ClassDefinition or ClassExtension. Tonel Readers must report an error if this is not the case.
+
