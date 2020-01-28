@@ -609,11 +609,11 @@ Directory structure
 The directory for a package contains a file named "properties.st" and a file for each class class defined or extended in the package.
 
 Package directory
-  properties.st
-  Class1.class
-  Class2.extension
+  properties.st file
+  Class1.class file
+  Class2.extension file
   ...
-  ClassN.class
+  ClassN.class file
   
 
 Package Directory
