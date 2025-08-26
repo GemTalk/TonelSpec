@@ -258,13 +258,13 @@ NotLastAssociationLine <- WsTab Association ',' WsNl
 
 LastAssociationLine <- WsTab Association WsNl
 
-Association <- SimpleSymbol WsBlank ':' WsBlank (String | List)
+Association <- SimpleSymbol WsBlank ':' WsBlank (String / List)
 
 List <- '[' WsNl ListElements WsTab ']' WsNl
 
-ListElements <- (ListElement WsNl) | (ListElement ',' WsNl ListElements)
+ListElements <- (ListElement WsNl) / (ListElement ',' WsNl ListElements)
 
-ListElement <- WsTabTab string 
+ListElement <- WsTabTab String
 
 String <- "'" StringChars "'"
 
@@ -389,7 +389,7 @@ SmalltalkCharacterLiteral <- '$' .
 
 SmalltalkBlock <- '[' SmalltalkCode ']'
 
-OtherSmalltalkCode <- (!('"' / "'" / '$' / '[') .)*
+OtherSmalltalkCode <- (!('"' / "'" / '$' / '[') .)+
 
 The full source code of a method described using this syntax is the concatenation of the MethodPattern, a newline, and the SmmalltalkCode from the SquareBracketsMethod production.
 
