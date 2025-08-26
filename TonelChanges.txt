@@ -7,5 +7,3 @@ Changes to Tonel over the initial alpha Pharo implementation:
 * Add a STON dictionary as a file header at the top of each file. Only one per file; this is the exception to the "concatenate together the finer-grained files" principle. This contains at least the Tonel version and content type and can contain other information such as the canonical file name (in case it has had to be modified due to path length or character set restrictions, or has been renamed for some other reason). Other information such as license or copyright can also go here.
 
 * Allow non-Smalltalk method syntax by using #selector and #source key in a method specification. If a #source key appears in a method specification, the Smalltalk-syntax square-bracket section below must be empty: []
-
-* Move the class comment to immediately following the class definition, rather than before it.
