@@ -507,7 +507,7 @@ A package directory contains a properties.st file and a directory for each class
 
 The properties.st file of a package directory contains a TonelFile header followed by a package definition. The syntax of this file is:
 
-PackagePropertiesFile <- TonelFileObject WsNl PackageProperties
+PackagePropertiesFile <- TonelFileObject WsNl PackageProperties !.
 
 In this file's TonelFileObject, the value associated with #contentType must be 'package'.
 
@@ -531,7 +531,7 @@ Tonel Writers must write both the 'instance' and 'class' subdirectories, and the
 
 The properties.st file of a class definition directory contains a TonelFile header followed by the class definition. The syntax of this file is:
 
-ClassDefinitionPropertiesFile <- TonelFileObject WsNl ClassProperties
+ClassDefinitionPropertiesFile <- TonelFileObject WsNl ClassProperties !.
 
 In this file's TonelFileObject, the value associated with #contentType must be 'classDefinition'.
 
@@ -550,7 +550,7 @@ Tonel Writers must write both the 'instance' and 'class' subdirectories, and the
 
 The grammar of the properties.st file in a class extension directory is:
 
-ClassExtensionPropertiesFile <- TonelFileObject WsNl TonelClassExtensionObject
+ClassExtensionPropertiesFile <- TonelFileObject WsNl TonelClassExtensionObject !.
 
 In this file's TonelFileObject, the value associated with #contentType must be 'classExtension'.
 
@@ -582,7 +582,7 @@ The canonical name of a method file is <methodSelector>.st.
 
 The contents of a method file have the syntax:
 
-TonelMethodFile <- TonelFileObject WsNl DescribedSmalltalkMethod
+TonelMethodFile <- TonelFileObject WsNl DescribedSmalltalkMethod !.
 
 In each method file's TonelFileObject, the value associated with #contentType must be 'method'.
 
@@ -641,7 +641,7 @@ A class definition file's canonical name is the name of the class being defined,
 
 The syntax of a class definition file is:
 
-ClassDefinitionFile <- TonelFileObject WsNl ClassDefinition
+ClassDefinitionFile <- TonelFileObject WsNl ClassDefinition !.
 
 ClassDefinition <- ClassProperties (WsNl SmalltalkMethods)?
 
@@ -661,7 +661,7 @@ A class extension file's canonical name is the name of the class being extended,
 
 The syntax of a class extension file is:
 
-ClassExtensionFile <- TonelFileObject WsNl ClassExtension
+ClassExtensionFile <- TonelFileObject WsNl ClassExtension !.
 
 ClassExtension <- TonelClassExtensionObject WsNl SmalltalkMethods
 
@@ -696,7 +696,7 @@ A package file's canonical name is the name of the package being defined, follow
 
 The syntax of a package file is:
 
-PackageFile <- TonelFileObject WsNl PackageProperties WsNl PackageContents
+PackageFile <- TonelFileObject WsNl PackageProperties WsNl PackageContents !.
 
 PackageContents <- (ClassDefinitions WsNl ClassExtensions) / ClassDefinitions / ClassExtensions
 
