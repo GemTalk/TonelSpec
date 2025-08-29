@@ -1,4 +1,4 @@
-TonelFile { 
+TonelFile {
 	#tonelVersion : '1.0',
 	#tonelFormat : 'filePerClass',
 	#contentType : 'classFile',
@@ -18,20 +18,22 @@ Class {
 Stack >> pop [
 	"Returns the first element and remove it from the stack."
 
-	^self  removeFirst 
+	^self  removeFirst
 ]
 
 { #category : 'adding' }
-Stack >> push: anObject [ 
+Stack >> push: anObject [
 	"Adds a new object of any kind on top of the stack."
 	self addFirst: anObject.
 	^ anObject.
 ]
 
-{ #category : 'accessing',
-  #selector : 'top',
-  #source : 'top
-	\"Answer the first element of the stack without removing it.\"
-	^ self first'
+{
+	#category : 'accessing',
+	#selector : 'top',
+	#source : 'top
+	"Answer the first element of the stack without removing it."
+	<primitive>
+	{some crazy code in who knows what language with mismatched
+	braces/square brackets]'
 }
-[]

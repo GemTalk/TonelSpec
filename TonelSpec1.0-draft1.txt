@@ -319,7 +319,7 @@ Comments
 
 Comments must appear in Tonel files where specified below, and only where specified below. These comments are significant. They are not comments on the Tonel file itself, they are package or class comments. The syntax of a comment is:
 
-Comment <- '"' ((!'"' .) / '""')* '"' WsNl WsNl
+Comment <- '"' ((!'"' .) / '""')* '"' WsNl
 
 
 =======================
@@ -337,7 +337,7 @@ Every method whose source *can* be represented in SquareBracketMethod form *must
 
 The syntax for a method is:
 
-DescribedSmalltalkMethod <- TonelMethodDescriptor? SquareBracketsMethod?
+DescribedSmalltalkMethod <- TonelMethodDescriptor SquareBracketsMethod / TonelMethodDescriptor / SquareBracketsMethod
 
 The optional TonelMethodDescriptor in the above production is forbidden if there are no keys to put in it, and mandatory otherwise.
 
@@ -389,7 +389,7 @@ SmalltalkCharacterLiteral <- '$' .
 
 SmalltalkBlock <- '[' SmalltalkCode ']'
 
-OtherSmalltalkCode <- (!('"' / "'" / '$' / '[') .)+
+OtherSmalltalkCode <- (!('"' / "'" / '$' / '[' / (WsNl ']')) .)+
 
 The full source code of a method described using this syntax is the concatenation of the MethodPattern, a newline, and the SmmalltalkCode from the SquareBracketsMethod production.
 
