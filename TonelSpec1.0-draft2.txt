@@ -1,7 +1,17 @@
 =======================
 
-Tonel File and Directory Format Specification, version 1.0 draft 1
+Tonel File and Directory Format Specification, version 1.0 draft 2 (in progress)
 Martin McClure, principal author
+
+====================
+
+About draft 2:
+
+September 2025:
+I didn't get a whole lot of feedback on draft 1. But as I work on implementing a Tonel read/writer that conforms to the spec, I'm finding errors and things that could use improvement, hence a second draft.
+
+Significant changes from draft 1:
+
 
 ====================
 
